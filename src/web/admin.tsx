@@ -169,8 +169,16 @@ adminApp.get('/', async (c) => {
               </div>
             )}
 
-            <div class="h-40 w-full bg-gray-200 flex items-center justify-center overflow-hidden">
-               <img src={`/img/${img.id}.jpg`} alt={img.id} loading="lazy" class="w-full h-full object-cover" />
+            <div class="h-40 w-full bg-gray-200 flex items-center justify-center overflow-hidden relative">
+               {img.is_broken && (
+                 <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                   </svg>
+                   <span class="text-white text-[10px] font-bold uppercase tracking-wider">Source Missing</span>
+                 </div>
+               )}
+               <img src={`/img/${img.id}.jpg`} alt={img.id} loading="lazy" class={`w-full h-full object-cover ${img.is_broken ? 'grayscale blur-[2px]' : ''}`} />
             </div>
             
             <div class="p-3 text-sm flex flex-col gap-2">

@@ -1,0 +1,1 @@
+ALTER TABLE `images` ADD `is_broken` integer DEFAULT false NOT NULL;
