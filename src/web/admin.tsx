@@ -135,17 +135,37 @@ adminApp.get('/', async (c) => {
 
   let imagesList;
   if (isAdmin) {
-    imagesList = await db.select().from(schema.images).orderBy(desc(schema.images.created_at)).all()
+    // Join with users table to get status info in admin mode
+    imagesList = await db
+      .select({
+        image: schema.images,
+        user: schema.users,
+      })
+      .from(schema.images)
+      .leftJoin(schema.users, eq(schema.images.uploader_id, schema.users.tg_id))
+      .orderBy(desc(schema.images.created_at))
+      .all()
   } else {
-    imagesList = await db.select().from(schema.images).where(eq(schema.images.uploader_id, userId)).orderBy(desc(schema.images.created_at)).all()
+    const rawImages = await db.select().from(schema.images).where(eq(schema.images.uploader_id, userId)).orderBy(desc(schema.images.created_at)).all()
+    imagesList = rawImages.map(img => ({ image: img, user: null }))
   }
 
   return c.html(
     <Layout title="Images Dashboard" isAdmin={isAdmin}>
       <h2 class="text-xl font-semibold mb-4 text-gray-800">Uploaded Images</h2>
       <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {imagesList.map((img) => (
+        {imagesList.map(({ image: img, user }) => (
           <div class="bg-white border text-center rounded-lg shadow-sm overflow-hidden flex flex-col relative group">
+            {/* User status badge (Admin View) */}
+            {isAdmin && user && (
+              <div class="absolute top-2 left-2 z-10">
+                <span title={`Uploader: ${user.nickname || user.tg_id} (${user.status})`} 
+                      class={`px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-sm ${user.status === 'active' ? 'bg-green-500' : user.status === 'banned' ? 'bg-red-500' : 'bg-yellow-500'}`}>
+                  {user.status === 'active' ? 'A' : user.status === 'banned' ? 'B' : 'P'}
+                </span>
+              </div>
+            )}
+
             <div class="h-40 w-full bg-gray-200 flex items-center justify-center overflow-hidden">
                <img src={`/img/${img.id}.jpg`} alt={img.id} loading="lazy" class="w-full h-full object-cover" />
             </div>
@@ -155,19 +175,24 @@ adminApp.get('/', async (c) => {
                  <a href={`/img/${img.id}.jpg`} target="_blank" class="text-blue-600 hover:underline font-mono truncate">{img.id}.jpg</a>
                </div>
                
-               <div class="flex items-center gap-2 justify-between">
-                 {/* AlpineJS form to toggle public state seamlessly */}
-                 <form action={`/admin/image/${img.id}/toggle-public`} method="POST" x-data x-ref="form" class="w-full">
-                    <button type="submit" 
-                            class={`w-full py-1 px-2 rounded-md font-medium text-xs transition ${img.is_public ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                      {img.is_public ? '✅ Public' : '🔒 Private'}
-                    </button>
-                 </form>
+               <div class="flex items-center gap-2">
+                  {/* Public Toggle (Takes most space) */}
+                  <form action={`/admin/image/${img.id}/toggle-public`} method="POST" x-data x-ref="form" class="flex-grow">
+                     <button type="submit" 
+                             class={`w-full py-1 px-1 rounded-md font-medium text-[10px] transition ${img.is_public ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                       {img.is_public ? '✅ Public' : '🔒 Private'}
+                     </button>
+                  </form>
+
+                  {/* Delete Button (Icon only or small text next to it) */}
+                  <form action={`/admin/image/${img.id}/delete`} method="POST" onsubmit="return confirm('Are you sure you want to delete this link?')" class="flex-shrink-0">
+                     <button type="submit" class="bg-red-50 text-red-500 hover:bg-red-100 p-1 rounded-md transition" title="Delete Image">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                     </button>
+                  </form>
                </div>
-               
-               <form action={`/admin/image/${img.id}/delete`} method="POST" onsubmit="return confirm('Are you sure you want to delete this link?')">
-                  <button type="submit" class="text-red-500 hover:text-red-700 text-xs text-center w-full mt-1 font-medium">🗑 Delete</button>
-               </form>
             </div>
           </div>
         ))}
