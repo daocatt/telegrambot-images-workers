@@ -15,6 +15,7 @@ type Bindings = {
   BASE_URL: string;
   ADMIN_URL?: string;
   WEBHOOK_URL?: string;
+  ENABLE_PUBLIC_CHECK?: string; // "true" or "false"
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -55,15 +56,20 @@ async function proxyImageFromTelegram(c: any, tgFileId: string, imageId?: string
 
   // Industrial Security: Handle missing files with 404 and Negative Caching
   if (!fileParams.ok) {
-    console.error(`[ERROR] File not found on TG: ${tgFileId}`, fileParams);
-    
-    // If we have a native Image ID, mark it as broken in D1 asynchronously
-    if (imageId) {
-      const db = drizzle(c.env.DB, { schema })
-      c.executionCtx.waitUntil(
-        db.update(schema.images).set({ is_broken: true }).where(eq(schema.images.id, imageId))
-      );
-    }
+    // Link health sync: If file is missing on TG, mark it broken in D1
+    // We do this by ID (if provided) or by searching for the tgFileId
+    const db = drizzle(c.env.DB, { schema })
+    c.executionCtx.waitUntil((async () => {
+      try {
+        if (imageId) {
+          await db.update(schema.images).set({ is_broken: true }).where(eq(schema.images.id, imageId))
+        } else {
+          await db.update(schema.images).set({ is_broken: true }).where(eq(schema.images.tg_file_id, tgFileId))
+        }
+      } catch (e) {
+        console.error('[DB Sync Error] Failed to mark image as broken:', e)
+      }
+    })());
 
     return new Response('Image not found on Telegram servers.', { 
       status: 404,
@@ -88,6 +94,15 @@ async function proxyImageFromTelegram(c: any, tgFileId: string, imageId?: string
 
 // Image Serving Route (Native ID)
 app.get('/img/:filename', async (c) => {
+  const cache = caches.default
+  const cacheKey = new Request(c.req.url, c.req.raw)
+  
+  // 1. Try Cache API first
+  const cachedResponse = await cache.match(cacheKey)
+  if (cachedResponse) {
+    return cachedResponse
+  }
+
   const { filename } = c.req.param()
   const id = filename.split('.')[0]
   
@@ -99,24 +114,55 @@ app.get('/img/:filename', async (c) => {
   
   // Strategy: If already marked broken, return 404 immediately
   if (image.is_broken) {
-    return new Response('Image is marked as broken (missing on source).', { 
+    const brokenRes = new Response('Image is marked as broken (missing on source).', { 
       status: 404,
       headers: { 'Cache-Control': 'public, max-age=86400' } 
     })
+    c.executionCtx.waitUntil(cache.put(cacheKey, brokenRes.clone()))
+    return brokenRes
   }
 
-  return proxyImageFromTelegram(c, image.tg_file_id, id)
+  const response = await proxyImageFromTelegram(c, image.tg_file_id, id)
+  
+  // 2. Put back into Cache API for future requests if successful
+  if (response.ok) {
+    c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()))
+  }
+  
+  return response
 })
 
 // Compatibility Route for telegraph-images
 app.get('/file/:filename', async (c) => {
+  const cache = caches.default
+  const cacheKey = new Request(c.req.url, c.req.raw)
+  
+  const cachedResponse = await cache.match(cacheKey)
+  if (cachedResponse) return cachedResponse
+
   const { filename } = c.req.param()
   const tgFileId = filename.split('.')[0]
   
   if (!tgFileId) return c.text('Invalid file ID', 400)
   
-  // Direct proxy (no DB lookup)
-  return proxyImageFromTelegram(c, tgFileId)
+  // Optional Security Check: Query D1 for is_public status
+  if (c.env.ENABLE_PUBLIC_CHECK === 'true') {
+    const db = drizzle(c.env.DB, { schema })
+    const image = await db.select({ is_public: schema.images.is_public }).from(schema.images).where(eq(schema.images.tg_file_id, tgFileId)).get()
+    
+    // If record exists and is private, deny access
+    if (image && !image.is_public) {
+      return c.text('Access denied: image is private.', 403)
+    }
+  }
+
+  const response = await proxyImageFromTelegram(c, tgFileId)
+
+  if (response.ok || response.status === 404) {
+    c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()))
+  }
+
+  return response
 })
 
 // Webhook setup helper (Optional admin route to set it up easily via curl)

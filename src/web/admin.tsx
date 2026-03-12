@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../db/schema'
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, desc, and, like, count, sql } from 'drizzle-orm'
 import { EnvBindings } from '../bot/context'
 
 type ContextEnv = {
@@ -133,9 +133,32 @@ adminApp.get('/', async (c) => {
   const userId = c.get('userId')
   const isAdmin = c.get('isAdmin')
 
+  // Pagination & Search params
+  const page = parseInt(c.req.query('page') || '1')
+  const search = c.req.query('q') || ''
+  const pageSize = 20
+  const offset = (page - 1) * pageSize
+
+  // Build Query Conditions
+  let baseWhere = isAdmin 
+    ? (search ? like(schema.images.caption, `%${search}%`) : undefined)
+    : (search 
+        ? and(eq(schema.images.uploader_id, userId), like(schema.images.caption, `%${search}%`))
+        : eq(schema.images.uploader_id, userId)
+      )
+
+  // Fetch Total Count for Pagination
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(schema.images)
+    .where(baseWhere)
+    .all()
+  
+  const totalPages = Math.ceil(total / pageSize)
+
+  // Fetch Paginated Images
   let imagesList;
   if (isAdmin) {
-    // Join with users table to get status info in admin mode
     imagesList = await db
       .select({
         image: schema.images,
@@ -143,16 +166,48 @@ adminApp.get('/', async (c) => {
       })
       .from(schema.images)
       .leftJoin(schema.users, eq(schema.images.uploader_id, schema.users.tg_id))
+      .where(baseWhere)
       .orderBy(desc(schema.images.created_at))
+      .limit(pageSize)
+      .offset(offset)
       .all()
   } else {
-    const rawImages = await db.select().from(schema.images).where(eq(schema.images.uploader_id, userId)).orderBy(desc(schema.images.created_at)).all()
+    const rawImages = await db
+      .select()
+      .from(schema.images)
+      .where(baseWhere)
+      .orderBy(desc(schema.images.created_at))
+      .limit(pageSize)
+      .offset(offset)
+      .all()
     imagesList = rawImages.map(img => ({ image: img, user: null }))
   }
 
   return c.html(
     <Layout title="Images Dashboard" isAdmin={isAdmin}>
-      <h2 class="text-xl font-semibold mb-4 text-gray-800">Uploaded Images</h2>
+      <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <h2 class="text-xl font-bold text-gray-800">Uploaded Images ({total})</h2>
+        
+        {/* Search Form */}
+        <form method="GET" action="/admin" class="flex gap-2">
+          <input 
+            type="text" 
+            name="q" 
+            value={search} 
+            placeholder="Search captions..." 
+            class="px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-64"
+          />
+          <button type="submit" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+            Search
+          </button>
+          {search && (
+            <a href="/admin" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-300 transition flex items-center">
+              Clear
+            </a>
+          )}
+        </form>
+      </div>
+
       <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {imagesList.map(({ image: img, user }) => (
           <div class="bg-white border text-center rounded-lg shadow-sm overflow-hidden flex flex-col relative group">
@@ -178,12 +233,12 @@ adminApp.get('/', async (c) => {
                    <span class="text-white text-[10px] font-bold uppercase tracking-wider">Source Missing</span>
                  </div>
                )}
-               <img src={`/img/${img.id}.jpg`} alt={img.id} loading="lazy" class={`w-full h-full object-cover ${img.is_broken ? 'grayscale blur-[2px]' : ''}`} />
+               <img src={`/file/${img.tg_file_id}.jpg`} alt={img.id} loading="lazy" class={`w-full h-full object-cover ${img.is_broken ? 'grayscale blur-[2px]' : ''}`} />
             </div>
             
             <div class="p-3 text-sm flex flex-col gap-2">
                <div class="flex items-center gap-2 mb-1">
-                 <a href={`/img/${img.id}.jpg`} target="_blank" class="text-blue-600 hover:underline font-mono truncate">{img.id}.jpg</a>
+                 <a href={`/file/${img.tg_file_id}.jpg`} target="_blank" class="text-blue-600 hover:underline font-mono truncate">{img.id}.jpg</a>
                </div>
                
                <div class="flex items-center gap-2">
@@ -207,8 +262,34 @@ adminApp.get('/', async (c) => {
             </div>
           </div>
         ))}
-        {imagesList.length === 0 && <p class="text-gray-500 col-span-full">No images found.</p>}
+        {imagesList.length === 0 && <p class="text-gray-500 col-span-full py-12 text-center">No images found matching your criteria.</p>}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div class="mt-8 flex justify-center items-center gap-2">
+          {page > 1 && (
+            <a href={`/admin?page=${page - 1}${search ? `&q=${encodeURIComponent(search)}` : ''}`} 
+               class="px-4 py-2 border rounded-lg bg-white text-sm font-medium hover:bg-gray-50 text-gray-700 shadow-sm">
+              Previous
+            </a>
+          )}
+          
+          <div class="flex gap-1">
+             {/* Show current page and total */}
+             <span class="px-4 py-2 text-sm text-gray-600 font-medium">
+               Page {page} of {totalPages}
+             </span>
+          </div>
+
+          {page < totalPages && (
+            <a href={`/admin?page=${page + 1}${search ? `&q=${encodeURIComponent(search)}` : ''}`} 
+               class="px-4 py-2 border rounded-lg bg-white text-sm font-medium hover:bg-gray-50 text-gray-700 shadow-sm">
+              Next
+            </a>
+          )}
+        </div>
+      )}
     </Layout>
   )
 })
