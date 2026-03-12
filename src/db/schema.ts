@@ -20,6 +20,20 @@ export const images = sqliteTable('images', {
   is_public: integer('is_public', { mode: 'boolean' }).default(true).notNull(),
   caption: text('caption'),
   is_broken: integer('is_broken', { mode: 'boolean' }).default(false).notNull(),
+  group_id: text('group_id').references(() => groups.id, { onDelete: 'set null' }),
+  sort_order: integer('sort_order').default(0).notNull(),
+  created_at: integer('created_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const groups = sqliteTable('groups', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id')
+    .notNull()
+    .references(() => users.tg_id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  passcode: text('passcode'), // Optional passcode protection
+  layout: text('layout').default('grid').notNull(), // 'grid', 'waterfall', 'carousel'
+  is_public: integer('is_public', { mode: 'boolean' }).default(true).notNull(),
   created_at: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
