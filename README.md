@@ -129,6 +129,7 @@ After creating your bot in BotFather, you can set these commands using `/setcomm
 ## Industrial-Grade Features
 
 - **Security Hardening**: Includes automatic sanitization of image captions to prevent XSS and Markdown injection attacks.
+- **Social Media Preview (Open Graph)**: Shared links automatically generate rich preview cards with images and captions on Telegram, Discord, and Twitter.
 - **Extreme Performance & Caching**: Integrated Cloudflare **Cache API** on the edge. High-traffic images are served directly from the edge network with **zero D1 database reads** and zero latency.
 - **Link Health Monitoring**: Automatically detects and marks images as "Broken" in the database if the source file is deleted from Telegram, providing a visual warning in the Admin UI.
 - **Telegraph-Images Migration Support**: Native compatibility for legacy Telegraph-Images URL patterns (`/file/<tg_file_id>.jpg`).

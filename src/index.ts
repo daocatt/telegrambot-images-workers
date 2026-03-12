@@ -122,6 +122,47 @@ app.get('/img/:filename', async (c) => {
     return brokenRes
   }
 
+  // SOCIAL MEDIA PREVIEW BLACK MAGIC:
+  // Detect if requested by a human browser or social media bot (instead of an <img> tag)
+  const userAgent = c.req.header('User-Agent') || ''
+  const accept = c.req.header('Accept') || ''
+  const isBrowser = accept.includes('text/html') || userAgent.includes('TelegramBot') || userAgent.includes('Twitterbot') || userAgent.includes('facebookexternalhit')
+
+  if (isBrowser) {
+    const imageUrl = `${new URL(c.req.url).origin}/file/${image.tg_file_id}.jpg`
+    const siteTitle = "Telegram Image Host"
+    const description = image.caption || "Shared via Telegram Image Manager"
+    
+    return c.html(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>${description} - ${siteTitle}</title>
+          <!-- Open Graph / Facebook -->
+          <meta property="og:type" content="website">
+          <meta property="og:title" content="${description}">
+          <meta property="og:description" content="View this image on ${siteTitle}">
+          <meta property="og:image" content="${imageUrl}">
+          <!-- Twitter -->
+          <meta property="twitter:card" content="summary_large_image">
+          <meta property="twitter:title" content="${description}">
+          <meta property="twitter:image" content="${imageUrl}">
+          <style>
+            body { margin: 0; background: #0b0e11; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; }
+            img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+            .info { position: absolute; bottom: 20px; color: white; background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 20px; backdrop-filter: blur(5px); }
+          </style>
+        </head>
+        <body>
+          <img src="${imageUrl}" alt="${description}">
+          ${image.caption ? `<div class="info">${image.caption}</div>` : ''}
+        </body>
+      </html>
+    `)
+  }
+
   const response = await proxyImageFromTelegram(c, image.tg_file_id, id)
   
   // 2. Put back into Cache API for future requests if successful
