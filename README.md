@@ -64,6 +64,7 @@ You must create a `.env` file referencing `.env.example`.
 - `ADMIN_URL`: *(Optional)* A custom domain dedicated specifically for accessing the Web Admin UI (e.g. `https://admin.yourdomain.com`). Falls back to `BASE_URL` if not set.
 - `WEBHOOK_URL`: *(Optional)* A custom domain dedicated specifically for Telegram webhook requests (e.g. `https://api.yourdomain.com`). Falls back to `BASE_URL` if not set.
 - `ENABLE_PUBLIC_CHECK`: `true` or `false`. If `true`, the bot will query the database for every image request to check if it's public. If `false` (default), it skips the database check for maximum performance (0 D1 reads for public traffic).
+- `ENABLE_GALLERY`: `true` or `false`. Enables the Gallery/Collection feature, allowing users to group images into password-protected or public albums.
 
 ### 2. Automated Deployment (If you have Wrangler / Cloudflare CLI installed locally)
 ```bash
@@ -131,6 +132,7 @@ After creating your bot in BotFather, you can set these commands using `/setcomm
 - **Security Hardening**: Includes automatic sanitization of image captions to prevent XSS and Markdown injection attacks.
 - **Social Media Preview (Open Graph)**: Shared links automatically generate rich preview cards with images and captions on Telegram, Discord, and Twitter.
 - **Extreme Performance & Caching**: Integrated Cloudflare **Cache API** on the edge. High-traffic images are served directly from the edge network with **zero D1 database reads** and zero latency.
+- **Password-Protected Galleries**: Group images into collections with customizable layouts (Grid, Waterfall, Carousel) and secure them with a 6-digit passcode.
 - **Link Health Monitoring**: Automatically detects and marks images as "Broken" in the database if the source file is deleted from Telegram, providing a visual warning in the Admin UI.
 - **Telegraph-Images Migration Support**: Native compatibility for legacy Telegraph-Images URL patterns (`/file/<tg_file_id>.jpg`).
 - **Multi-Environment Support**: Clean architecture allowing you to maintain multiple bot instances (e.g., Production, Staging) using a single codebase via Wrangler Environments.
