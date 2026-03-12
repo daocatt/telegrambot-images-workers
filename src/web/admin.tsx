@@ -158,10 +158,13 @@ adminApp.get('/', async (c) => {
           <div class="bg-white border text-center rounded-lg shadow-sm overflow-hidden flex flex-col relative group">
             {/* User status badge (Admin View) */}
             {isAdmin && user && (
-              <div class="absolute top-2 left-2 z-10">
-                <span title={`Uploader: ${user.nickname || user.tg_id} (${user.status})`} 
+              <div class="absolute top-2 left-2 z-10 flex items-center gap-1">
+                <span title={`Status: ${user.status}`} 
                       class={`px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-sm ${user.status === 'active' ? 'bg-green-500' : user.status === 'banned' ? 'bg-red-500' : 'bg-yellow-500'}`}>
                   {user.status === 'active' ? 'A' : user.status === 'banned' ? 'B' : 'P'}
+                </span>
+                <span class="bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm truncate max-w-[80px]" title={user.nickname || user.tg_id}>
+                  {user.nickname || user.tg_id}
                 </span>
               </div>
             )}
