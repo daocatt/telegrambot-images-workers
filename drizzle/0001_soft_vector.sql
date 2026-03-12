@@ -1,0 +1,1 @@
+ALTER TABLE `images` ADD `caption` text;

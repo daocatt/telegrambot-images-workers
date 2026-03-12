@@ -18,6 +18,7 @@ export const images = sqliteTable('images', {
     .notNull()
     .references(() => users.tg_id, { onDelete: 'cascade' }),
   is_public: integer('is_public', { mode: 'boolean' }).default(true).notNull(),
+  caption: text('caption'),
   created_at: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
