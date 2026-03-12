@@ -8,7 +8,8 @@
     "generate-secret": "node scripts/generate-secret.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply telegrambot_images_db --remote",
-    "db:migrate:local": "wrangler d1 migrations apply telegrambot_images_db --local"
+    "db:migrate:local": "wrangler d1 migrations apply telegrambot_images_db --local",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.9",
+    "typescript": "^5.9.3",
     "wrangler": "^4.4.0"
   }
 }

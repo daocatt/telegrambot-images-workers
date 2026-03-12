@@ -12,6 +12,8 @@ export interface EnvBindings {
   BASE_URL: string; // e.g. "https://my-app.workers.dev"
   ADMIN_URL?: string; // Optional custom admin panel URL
   WEBHOOK_URL?: string; // Optional custom webhook URL
+  ENABLE_GALLERY?: string; // "true" | "false"
+  ENABLE_PUBLIC_CHECK?: string; // "true" | "false"
 }
 
 // Extend Grammy's default Context

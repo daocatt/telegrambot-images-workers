@@ -1,10 +1,10 @@
-import { Bot } from 'grammy';
+import { Bot, InlineKeyboard } from 'grammy';
 import { CustomContext, EnvBindings } from './context';
 import { getDb } from '../db/client';
 import { authMiddleware } from './middlewares/auth';
-import { users, images, adminSessions } from '../db/schema';
+import { users, images, adminSessions, groups } from '../db/schema';
 import { nanoid } from 'nanoid';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, desc } from 'drizzle-orm';
 
 // Industrial Security: Sanitize user input to prevent XSS, Script Injection and Markdown breaking
 function sanitizeCaption(text: string | undefined): string {
@@ -192,10 +192,28 @@ export function createBot(env: EnvBindings) {
       const sharedUrl = `${baseUrl}/file/${bestPhoto.file_id}.jpg`;
       const markdownLink = `![${cleanCaption || 'image'}](${sharedUrl})`;
       
-      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${sharedUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
+      const responseMsg = await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${sharedUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
         parse_mode: 'Markdown',
         link_preview_options: { is_disabled: true }
       });
+
+      // Gallery Integration: Ask to group if enabled
+      if (env.ENABLE_GALLERY === 'true') {
+        const userGroups = await ctx.db.select().from(groups).where(eq(groups.user_id, String(ctx.from.id))).orderBy(desc(groups.created_at)).limit(5).all();
+        
+        if (userGroups.length > 0) {
+          const keyboard = new InlineKeyboard();
+          userGroups.forEach((g, index) => {
+            keyboard.text(g.name, `set_group:${id}:${g.id}`);
+            if ((index + 1) % 2 === 0) keyboard.row();
+          });
+          
+          await ctx.reply(`📂 **Add to Gallery?**\nSelect a collection below to categorize this image:`, {
+            reply_markup: keyboard,
+            reply_parameters: { message_id: responseMsg.message_id }
+          });
+        }
+      }
       
       console.log(`[INFO] Image uploaded: id=${id}, uploader=${ctx.from.id}, shared_via=file_id`);
     } catch (err: any) {
@@ -231,14 +249,48 @@ export function createBot(env: EnvBindings) {
       const sharedUrl = `${baseUrl}/file/${doc.file_id}.jpg`;
       const markdownLink = `![${cleanCaption || 'image'}](${sharedUrl})`;
 
-      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${sharedUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
+      const responseMsg = await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${sharedUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
         parse_mode: 'Markdown', 
         link_preview_options: { is_disabled: true }
       });
+
+      // Gallery Integration: Ask to group if enabled
+      if (env.ENABLE_GALLERY === 'true') {
+        const userGroups = await ctx.db.select().from(groups).where(eq(groups.user_id, String(ctx.from.id))).orderBy(desc(groups.created_at)).limit(5).all();
+        
+        if (userGroups.length > 0) {
+          const keyboard = new InlineKeyboard();
+          userGroups.forEach((g, index) => {
+            keyboard.text(g.name, `set_group:${id}:${g.id}`);
+            if ((index + 1) % 2 === 0) keyboard.row();
+          });
+          
+          await ctx.reply(`📂 **Add to Gallery?**\nSelect a collection below to categorize this image:`, {
+            reply_markup: keyboard,
+            reply_parameters: { message_id: responseMsg.message_id }
+          });
+        }
+      }
       
       console.log(`[INFO] Document uploaded as image: id=${id}, uploader=${ctx.from.id}, shared_via=file_id`);
     } catch (err: any) {
       await ctx.reply(`❌ Failed to upload document.`);
+    }
+  });
+
+  // Handle Gallery Callback
+  bot.callbackQuery(/^set_group:(.+):(.+)$/, async (ctx) => {
+    const [, imageId, groupId] = ctx.match;
+    try {
+      const g = await ctx.db.select().from(groups).where(eq(groups.id, groupId)).get();
+      if (!g) return await ctx.answerCallbackQuery('❌ Gallery no longer exists.');
+
+      await ctx.db.update(images).set({ group_id: groupId }).where(eq(images.id, imageId));
+      
+      await ctx.editMessageText(`✅ Image added to gallery: **${g.name}**`, { parse_mode: 'Markdown' });
+      await ctx.answerCallbackQuery(`Added to ${g.name}`);
+    } catch (e) {
+      await ctx.answerCallbackQuery('❌ Failed to update gallery.');
     }
   });
 
