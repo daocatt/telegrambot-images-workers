@@ -187,17 +187,17 @@ export function createBot(env: EnvBindings) {
         created_at: new Date()
       });
 
-      // 3. Return a clean link
+      // 3. Return a clean link (Using /file/ prefix to bypass D1 on public traffic)
       const baseUrl = env.BASE_URL.replace(/\/$/, '');
-      const fullUrl = `${baseUrl}/img/${id}.jpg`;
-      const markdownLink = `![${cleanCaption || 'image'}](${fullUrl})`;
+      const sharedUrl = `${baseUrl}/file/${bestPhoto.file_id}.jpg`;
+      const markdownLink = `![${cleanCaption || 'image'}](${sharedUrl})`;
       
-      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${fullUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
+      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${sharedUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
         parse_mode: 'Markdown',
         link_preview_options: { is_disabled: true }
       });
       
-      console.log(`[INFO] Image uploaded: id=${id}, uploader=${ctx.from.id}, has_caption=${!!cleanCaption}`);
+      console.log(`[INFO] Image uploaded: id=${id}, uploader=${ctx.from.id}, shared_via=file_id`);
     } catch (err: any) {
       console.error(err);
       await ctx.reply(`❌ Failed to upload: ${err.message}`);
@@ -228,15 +228,15 @@ export function createBot(env: EnvBindings) {
       });
 
       const baseUrl = env.BASE_URL.replace(/\/$/, '');
-      const fullUrl = `${baseUrl}/img/${id}.jpg`;
-      const markdownLink = `![${cleanCaption || 'image'}](${fullUrl})`;
+      const sharedUrl = `${baseUrl}/file/${doc.file_id}.jpg`;
+      const markdownLink = `![${cleanCaption || 'image'}](${sharedUrl})`;
 
-      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${fullUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
+      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${sharedUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
         parse_mode: 'Markdown', 
         link_preview_options: { is_disabled: true }
       });
       
-      console.log(`[INFO] Document uploaded as image: id=${id}, uploader=${ctx.from.id}`);
+      console.log(`[INFO] Document uploaded as image: id=${id}, uploader=${ctx.from.id}, shared_via=file_id`);
     } catch (err: any) {
       await ctx.reply(`❌ Failed to upload document.`);
     }

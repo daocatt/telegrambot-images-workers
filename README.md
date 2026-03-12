@@ -63,6 +63,7 @@ You must create a `.env` file referencing `.env.example`.
 - `BASE_URL`: The public URL where your Cloudflare worker is accessible, e.g., `https://my-app.workers.dev` (No trailing slash).
 - `ADMIN_URL`: *(Optional)* A custom domain dedicated specifically for accessing the Web Admin UI (e.g. `https://admin.yourdomain.com`). Falls back to `BASE_URL` if not set.
 - `WEBHOOK_URL`: *(Optional)* A custom domain dedicated specifically for Telegram webhook requests (e.g. `https://api.yourdomain.com`). Falls back to `BASE_URL` if not set.
+- `ENABLE_PUBLIC_CHECK`: `true` or `false`. If `true`, the bot will query the database for every image request to check if it's public. If `false` (default), it skips the database check for maximum performance (0 D1 reads for public traffic).
 
 ### 2. Automated Deployment (If you have Wrangler / Cloudflare CLI installed locally)
 ```bash
@@ -128,5 +129,8 @@ After creating your bot in BotFather, you can set these commands using `/setcomm
 ## Industrial-Grade Features
 
 - **Security Hardening**: Includes automatic sanitization of image captions to prevent XSS and Markdown injection attacks.
-- **Telegraph-Images Migration Support**: Native compatibility for legacy Telegraph-Images URLs. Just point your domain to this worker, and it will automatically proxy `/file/<tg_file_id>.jpg` requests without needing a database entry.
+- **Extreme Performance & Caching**: Integrated Cloudflare **Cache API** on the edge. High-traffic images are served directly from the edge network with **zero D1 database reads** and zero latency.
+- **Link Health Monitoring**: Automatically detects and marks images as "Broken" in the database if the source file is deleted from Telegram, providing a visual warning in the Admin UI.
+- **Telegraph-Images Migration Support**: Native compatibility for legacy Telegraph-Images URL patterns (`/file/<tg_file_id>.jpg`).
 - **Multi-Environment Support**: Clean architecture allowing you to maintain multiple bot instances (e.g., Production, Staging) using a single codebase via Wrangler Environments.
+- **Advanced Dashboard**: Features server-side pagination and real-time search, making it effortless to manage thousands of images without performance degradation.
