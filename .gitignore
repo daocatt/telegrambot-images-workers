@@ -18,8 +18,12 @@ node_modules/
 # env
 .env
 .env.production
+.env.pot
 .dev.vars
 wrangler.jsonc
+
+# scripts
+deploy-pot.sh
 
 # logs
 plan.md
@@ -33,3 +37,4 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+deploy-snapflare.sh
