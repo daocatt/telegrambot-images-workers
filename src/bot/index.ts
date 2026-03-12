@@ -105,10 +105,60 @@ export function createBot(env: EnvBindings) {
   bot.command('deladmin', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
     const args = ctx.match.split(' ');
-    if (args.length < 1) return ctx.reply('Usage: /deladmin <tg_id>');
+    if (args.length < 1 || !args[0]) return ctx.reply('Usage: /deladmin <tg_id>');
     const tg_id = args[0];
     await ctx.db.update(users).set({ is_admin: false }).where(eq(users.tg_id, tg_id));
     await ctx.reply(`✅ Removed user ${tg_id} from admins.`);
+  });
+
+  // User Management Commands (Admin Only)
+  bot.command('pending', async (ctx) => {
+    if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
+    try {
+      const pendingUsers = await ctx.db.select().from(users).where(eq(users.status, 'pending')).all();
+      if (pendingUsers.length === 0) {
+        return ctx.reply('✅ No pending approval requests.');
+      }
+      const list = pendingUsers.map(u => `• ${u.nickname} (\`${u.tg_id}\`)`).join('\n');
+      await ctx.reply(`⏳ **Pending Users:**\n\n${list}\n\nUse \`/approve <ID>\` or \`/banned <ID>\``, { parse_mode: 'Markdown' });
+    } catch (err) {
+      await ctx.reply('❌ Failed to fetch pending users.');
+    }
+  });
+
+  bot.command('approve', async (ctx) => {
+    if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
+    const tg_id = ctx.match.trim();
+    if (!tg_id) return ctx.reply('Usage: /approve <tg_id>');
+
+    try {
+      const target = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
+      if (!target) return ctx.reply('❌ User not found.');
+      
+      await ctx.db.update(users).set({ status: 'active' }).where(eq(users.tg_id, tg_id));
+      await ctx.reply(`✅ User \`${tg_id}\` (${target.nickname}) has been approved!`);
+      
+      // Notify the user
+      await ctx.api.sendMessage(tg_id, '🎉 **Congratulations!** Your account has been approved. You can now use the bot!', { parse_mode: 'Markdown' });
+    } catch (err) {
+      await ctx.reply('❌ Operation failed.');
+    }
+  });
+
+  bot.command('banned', async (ctx) => {
+    if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
+    const tg_id = ctx.match.trim();
+    if (!tg_id) return ctx.reply('Usage: /banned <tg_id>');
+
+    try {
+      const target = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
+      if (!target) return ctx.reply('❌ User not found.');
+
+      await ctx.db.update(users).set({ status: 'banned' }).where(eq(users.tg_id, tg_id));
+      await ctx.reply(`🚫 User \`${tg_id}\` (${target.nickname}) has been banned.`);
+    } catch (err) {
+      await ctx.reply('❌ Operation failed.');
+    }
   });
 
   // Handle Photo Payload

@@ -119,5 +119,14 @@ After creating your bot in BotFather, you can set these commands using `/setcomm
 - `start` - Link your Telegram account and check permissions
 - `upload` - Interactive prompt to upload an image
 - `dashboard` - Get a secure 2-hour link to access the Web Admin Panel
-- `setadmin` - (Admin only) Set a user as admin: `/setadmin <user_id> [nickname]`
+- `setadmin` - (Admin only) Set a user as admin: `/setadmin <tg_id>`
 - `deladmin` - (Admin only) Revoke admin rights from a user
+- `pending` - (Admin only) List all users awaiting approval
+- `approve` - (Admin only) Approve a pending user: `/approve <tg_id>`
+- `banned` - (Admin only) Ban a user from using the bot: `/banned <tg_id>`
+
+## Industrial-Grade Features
+
+- **Security Hardening**: Includes automatic sanitization of image captions to prevent XSS and Markdown injection attacks.
+- **Telegraph-Images Migration Support**: Native compatibility for legacy Telegraph-Images URLs. Just point your domain to this worker, and it will automatically proxy `/file/<tg_file_id>.jpg` requests without needing a database entry.
+- **Multi-Environment Support**: Clean architecture allowing you to maintain multiple bot instances (e.g., Production, Staging) using a single codebase via Wrangler Environments.

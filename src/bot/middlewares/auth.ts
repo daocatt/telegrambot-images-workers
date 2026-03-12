@@ -46,7 +46,23 @@ export async function authMiddleware(ctx: CustomContext, next: NextFunction) {
       user = { tg_id, nickname, is_admin: false, status: nextStatus, created_at: new Date() };
 
       if (nextStatus === 'pending') {
-        return ctx.reply('⏳ Your request has been sent! Please wait for an admin to approve you.');
+        await ctx.reply('⏳ Your request has been sent! Please wait for an admin to approve you.');
+        
+        // Notify the first admin (creator) or all admins
+        try {
+          const firstAdmin = await ctx.db.select().from(users).where(eq(users.is_admin, true)).orderBy(sql`created_at ASC`).limit(1).get();
+          if (firstAdmin && firstAdmin.tg_id !== tg_id) {
+            await ctx.api.sendMessage(firstAdmin.tg_id, 
+              `🔔 **New User Request**\n\n` +
+              `👤 **User:** ${nickname}\n` +
+              `🆔 **ID:** \`${tg_id}\`\n\n` +
+              `Use /approve to see pending users.`
+            , { parse_mode: 'Markdown' });
+          }
+        } catch (err) {
+          console.error('[Admin Notify Error]', err);
+        }
+        return;
       } else {
         await ctx.reply('✅ Welcome! Your account has been automatically approved.');
       }
