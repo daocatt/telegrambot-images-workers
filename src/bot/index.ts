@@ -1,11 +1,20 @@
-import { Bot, webhookCallback } from 'grammy';
+import { Bot } from 'grammy';
 import { CustomContext, EnvBindings } from './context';
 import { getDb } from '../db/client';
 import { authMiddleware } from './middlewares/auth';
 import { users, images, adminSessions } from '../db/schema';
 import { nanoid } from 'nanoid';
-import { v4 as uuidv4 } from 'uuid'; // we need a uuid library, or just use nanoid again for simplicity or crypto.randomUUID()
 import { eq, sql } from 'drizzle-orm';
+
+// Industrial Security: Sanitize user input to prevent XSS, Script Injection and Markdown breaking
+function sanitizeCaption(text: string | undefined): string {
+  if (!text) return '';
+  return text
+    .trim()
+    .slice(0, 200) // Limit length to prevent DoS or UI breaking
+    .replace(/[<>&"']/g, '') // Basic HTML escaping/removal for XSS prevention
+    .replace(/[\[\]\(\)\*\_`~]/g, ''); // Remove Markdown special chars to prevent injection in tags
+}
 
 export function createBot(env: EnvBindings) {
   const bot = new Bot<CustomContext>(env.BOT_TOKEN);
@@ -111,11 +120,12 @@ export function createBot(env: EnvBindings) {
 
     try {
       // 1. Send it to private channel
-      // We use `copyMessage` to easily clone it to avoid sending the file payload from our worker memory again
       const msg = await ctx.api.copyMessage(env.CHANNEL_ID, ctx.chat.id, ctx.message.message_id);
 
       // 2. Save info to DB
-      const id = nanoid(8); // e.g. "aB329Zx1"
+      const id = nanoid(8);
+      const rawCaption = ctx.message.caption;
+      const cleanCaption = sanitizeCaption(rawCaption);
       
       await ctx.db.insert(images).values({
         id,
@@ -123,13 +133,21 @@ export function createBot(env: EnvBindings) {
         channel_msg_id: msg.message_id,
         uploader_id: String(ctx.from.id),
         is_public: true,
+        caption: cleanCaption,
         created_at: new Date()
       });
 
       // 3. Return a clean link
       const baseUrl = env.BASE_URL.replace(/\/$/, '');
       const fullUrl = `${baseUrl}/img/${id}.jpg`;
-      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Clickable Link:**\n${fullUrl}\n\n📝 **Markdown Link:**\n\`${fullUrl}\``, { parse_mode: 'Markdown' });
+      const markdownLink = `![${cleanCaption || 'image'}](${fullUrl})`;
+      
+      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${fullUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
+        parse_mode: 'Markdown',
+        link_preview_options: { is_disabled: true }
+      });
+      
+      console.log(`[INFO] Image uploaded: id=${id}, uploader=${ctx.from.id}, has_caption=${!!cleanCaption}`);
     } catch (err: any) {
       console.error(err);
       await ctx.reply(`❌ Failed to upload: ${err.message}`);
@@ -146,6 +164,8 @@ export function createBot(env: EnvBindings) {
     try {
       const msg = await ctx.api.copyMessage(env.CHANNEL_ID, ctx.chat.id, ctx.message.message_id);
       const id = nanoid(8);
+      const rawCaption = ctx.message.caption;
+      const cleanCaption = sanitizeCaption(rawCaption);
       
       await ctx.db.insert(images).values({
         id,
@@ -153,12 +173,20 @@ export function createBot(env: EnvBindings) {
         channel_msg_id: msg.message_id,
         uploader_id: String(ctx.from.id),
         is_public: true,
+        caption: cleanCaption,
         created_at: new Date()
       });
 
       const baseUrl = env.BASE_URL.replace(/\/$/, '');
       const fullUrl = `${baseUrl}/img/${id}.jpg`;
-      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Clickable Link:**\n${fullUrl}\n\n📝 **Markdown Link:**\n\`${fullUrl}\``, { parse_mode: 'Markdown' });
+      const markdownLink = `![${cleanCaption || 'image'}](${fullUrl})`;
+
+      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Direct URL:**\n\`${fullUrl}\`\n\n📝 **Markdown Code:**\n\`${markdownLink}\``, { 
+        parse_mode: 'Markdown', 
+        link_preview_options: { is_disabled: true }
+      });
+      
+      console.log(`[INFO] Document uploaded as image: id=${id}, uploader=${ctx.from.id}`);
     } catch (err: any) {
       await ctx.reply(`❌ Failed to upload document.`);
     }
