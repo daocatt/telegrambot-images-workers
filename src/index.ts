@@ -48,18 +48,36 @@ app.post('/webhook/:path_secret', async (c) => {
 })
 
 // Helper to proxy image from Telegram
-async function proxyImageFromTelegram(c: any, tgFileId: string) {
+async function proxyImageFromTelegram(c: any, tgFileId: string, imageId?: string) {
   // 1. Ask Telegram for the file_path via tg_file_id
   const fileParamsResponse = await fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/getFile?file_id=${tgFileId}`)
   const fileParams: any = await fileParamsResponse.json()
 
-  if (!fileParams.ok) return c.text('Failed to retrieve file from Telegram', 500)
+  // Industrial Security: Handle missing files with 404 and Negative Caching
+  if (!fileParams.ok) {
+    console.error(`[ERROR] File not found on TG: ${tgFileId}`, fileParams);
+    
+    // If we have a native Image ID, mark it as broken in D1 asynchronously
+    if (imageId) {
+      const db = drizzle(c.env.DB, { schema })
+      c.executionCtx.waitUntil(
+        db.update(schema.images).set({ is_broken: true }).where(eq(schema.images.id, imageId))
+      );
+    }
+
+    return new Response('Image not found on Telegram servers.', { 
+      status: 404,
+      headers: {
+        'Cache-Control': 'public, max-age=3600' // Cache 404 for 1 hour
+      }
+    })
+  }
 
   // 2. Download the actual binary stream from Telegram
   const filePath = fileParams.result.file_path
   const fileStreamResponse = await fetch(`https://api.telegram.org/file/bot${c.env.BOT_TOKEN}/${filePath}`)
 
-  if (!fileStreamResponse.ok) return c.text('Failed to stream file', 500)
+  if (!fileStreamResponse.ok) return c.text('Failed to stream file from Telegram', 502)
 
   // 3. Return to the browser with correct headers (cache + content-type)
   const headers = new Headers(fileStreamResponse.headers)
@@ -78,19 +96,26 @@ app.get('/img/:filename', async (c) => {
 
   if (!image) return c.text('Image not found', 404)
   if (!image.is_public) return c.text('Access denied', 403)
+  
+  // Strategy: If already marked broken, return 404 immediately
+  if (image.is_broken) {
+    return new Response('Image is marked as broken (missing on source).', { 
+      status: 404,
+      headers: { 'Cache-Control': 'public, max-age=86400' } 
+    })
+  }
 
-  return proxyImageFromTelegram(c, image.tg_file_id)
+  return proxyImageFromTelegram(c, image.tg_file_id, id)
 })
 
 // Compatibility Route for telegraph-images
-// Pattern: /file/AgACAgEAAyEGAASenzBWAAMjabLtb523noGCgXAIrNtzsbtLO8kAAncLaxstPZlFixd23Bq0S0ABAAMCAAN4AAM6BA.jpg
 app.get('/file/:filename', async (c) => {
   const { filename } = c.req.param()
   const tgFileId = filename.split('.')[0]
   
   if (!tgFileId) return c.text('Invalid file ID', 400)
   
-  // Directly proxy without DB lookup, acting as a pass-through for existing external links
+  // Direct proxy (no DB lookup)
   return proxyImageFromTelegram(c, tgFileId)
 })
 
