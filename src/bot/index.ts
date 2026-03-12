@@ -5,7 +5,7 @@ import { authMiddleware } from './middlewares/auth';
 import { users, images, adminSessions } from '../db/schema';
 import { nanoid } from 'nanoid';
 import { v4 as uuidv4 } from 'uuid'; // we need a uuid library, or just use nanoid again for simplicity or crypto.randomUUID()
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 export function createBot(env: EnvBindings) {
   const bot = new Bot<CustomContext>(env.BOT_TOKEN);
@@ -22,14 +22,46 @@ export function createBot(env: EnvBindings) {
 
   // Command handlers
   bot.command('start', async (ctx) => {
-    await ctx.reply(`👋 Welcome to Telegram Images Manager!\nYou are logged in as an authorized user.\n\nType /upload or simply send me a photo to get started!`);
+    await ctx.reply(`👋 Welcome to Telegram Images Manager!\nYou are logged in as an authorized user.\n\nType /upload or simply send me a photo to get started!\nType /help for more info.`);
+  });
+
+  bot.command('help', async (ctx) => {
+    await ctx.reply(`🚀 **Telegram Images Manager**\n\nA simple and powerful serverless image hosting solution powered by Cloudflare Workers and D1.\n\n🔗 **GitHub Repository:**\nhttps://github.com/daocatt/telegrambot-images-workers`, { parse_mode: 'Markdown' });
+  });
+
+  bot.command('me', async (ctx) => {
+    const tg_id = String(ctx.from?.id);
+    try {
+      // Fetch user details
+      const user = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
+      if (!user) return ctx.reply('❌ User info not found.');
+
+      // Count uploaded images
+      const [{ count }] = await ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(images)
+        .where(eq(images.uploader_id, tg_id));
+
+      const statsMsg = [
+        `👤 **User Profile**\n`,
+        `🆔 **ID:** \`${user.tg_id}\``,
+        `📛 **Nickname:** ${user.nickname || 'N/A'}`,
+        `📅 **Joined at:** ${user.created_at.toLocaleString()}`,
+        `📸 **Total Uploads:** ${count} images`,
+        `🛡 **Role:** ${user.is_admin ? 'Admin' : 'Member'}`
+      ].join('\n');
+
+      await ctx.reply(statsMsg, { parse_mode: 'Markdown' });
+    } catch (err) {
+      await ctx.reply('❌ Failed to fetch your info.');
+    }
   });
 
   bot.command('upload', async (ctx) => {
     await ctx.reply('📸 Please send me the image you want to upload (you can send multiple too!).');
   });
 
-  bot.command('admin', async (ctx) => {
+  bot.command('dashboard', async (ctx) => {
     const token = crypto.randomUUID().replace(/-/g, '');
     const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // +2 hours
 
@@ -42,7 +74,9 @@ export function createBot(env: EnvBindings) {
 
       const roleText = ctx.isAdmin ? 'Admin' : 'Personal';
       const adminBase = (env.ADMIN_URL || env.BASE_URL).replace(/\/$/, ''); // Remove trailing slash if any
-      await ctx.reply(`🛡 **${roleText} Dashboard Access**\n\nLogin Token (valid for 2 hours):\n\n🔐 \`${adminBase}/admin/login?token=${token}\``, { parse_mode: 'Markdown' });
+      const loginUrl = `${adminBase}/admin/login?token=${token}`;
+      
+      await ctx.reply(`🛡 **${roleText} Dashboard Access**\n\nYour management link is ready. Please click the button below to log in. This link will expire in 2 hours for security.\n\n🔗 [Click here to Login](${loginUrl})`, { parse_mode: 'Markdown' });
     } catch (e) {
       await ctx.reply('❌ Failed to generate access token.');
     }
@@ -94,7 +128,8 @@ export function createBot(env: EnvBindings) {
 
       // 3. Return a clean link
       const baseUrl = env.BASE_URL.replace(/\/$/, '');
-      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 Image Link:\n\`${baseUrl}/img/${id}.jpg\``, { parse_mode: 'Markdown' });
+      const fullUrl = `${baseUrl}/img/${id}.jpg`;
+      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Clickable Link:**\n${fullUrl}\n\n📝 **Markdown Link:**\n\`${fullUrl}\``, { parse_mode: 'Markdown' });
     } catch (err: any) {
       console.error(err);
       await ctx.reply(`❌ Failed to upload: ${err.message}`);
@@ -122,7 +157,8 @@ export function createBot(env: EnvBindings) {
       });
 
       const baseUrl = env.BASE_URL.replace(/\/$/, '');
-      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 Image Link:\n\`${baseUrl}/img/${id}.jpg\``, { parse_mode: 'Markdown' });
+      const fullUrl = `${baseUrl}/img/${id}.jpg`;
+      await ctx.reply(`✅ **Successfully Uploaded!**\n\n🔗 **Clickable Link:**\n${fullUrl}\n\n📝 **Markdown Link:**\n\`${fullUrl}\``, { parse_mode: 'Markdown' });
     } catch (err: any) {
       await ctx.reply(`❌ Failed to upload document.`);
     }
