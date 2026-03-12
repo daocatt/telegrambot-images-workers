@@ -47,35 +47,51 @@ app.post('/webhook/:path_secret', async (c) => {
   }
 })
 
-// Image Serving Route
+// Helper to proxy image from Telegram
+async function proxyImageFromTelegram(c: any, tgFileId: string) {
+  // 1. Ask Telegram for the file_path via tg_file_id
+  const fileParamsResponse = await fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/getFile?file_id=${tgFileId}`)
+  const fileParams: any = await fileParamsResponse.json()
+
+  if (!fileParams.ok) return c.text('Failed to retrieve file from Telegram', 500)
+
+  // 2. Download the actual binary stream from Telegram
+  const filePath = fileParams.result.file_path
+  const fileStreamResponse = await fetch(`https://api.telegram.org/file/bot${c.env.BOT_TOKEN}/${filePath}`)
+
+  if (!fileStreamResponse.ok) return c.text('Failed to stream file', 500)
+
+  // 3. Return to the browser with correct headers (cache + content-type)
+  const headers = new Headers(fileStreamResponse.headers)
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable') // Cache for 1 year
+  
+  return new Response(fileStreamResponse.body, { headers })
+}
+
+// Image Serving Route (Native ID)
 app.get('/img/:filename', async (c) => {
   const { filename } = c.req.param()
-  const id = filename.split('.')[0] // extract 'aB329Zx1' from 'aB329Zx1.jpg'
+  const id = filename.split('.')[0]
   
-  // 1. Fetch image from DB
   const db = drizzle(c.env.DB, { schema })
   const image = await db.select().from(schema.images).where(eq(schema.images.id, id)).get()
 
   if (!image) return c.text('Image not found', 404)
   if (!image.is_public) return c.text('Access denied', 403)
 
-  // 2. Ask Telegram for the file_path via tg_file_id
-  const fileParamsResponse = await fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/getFile?file_id=${image.tg_file_id}`)
-  const fileParams: any = await fileParamsResponse.json()
+  return proxyImageFromTelegram(c, image.tg_file_id)
+})
 
-  if (!fileParams.ok) return c.text('Failed to retrieve file from Telegram', 500)
-
-  // 3. Download the actual binary stream from Telegram
-  const filePath = fileParams.result.file_path
-  const fileStreamResponse = await fetch(`https://api.telegram.org/file/bot${c.env.BOT_TOKEN}/${filePath}`)
-
-  if (!fileStreamResponse.ok) return c.text('Failed to stream file', 500)
-
-  // 4. Return to the browser with correct headers (cache + content-type)
-  const headers = new Headers(fileStreamResponse.headers)
-  headers.set('Cache-Control', 'public, max-age=31536000, immutable') // Cache for 1 year
+// Compatibility Route for telegraph-images
+// Pattern: /file/AgACAgEAAyEGAASenzBWAAMjabLtb523noGCgXAIrNtzsbtLO8kAAncLaxstPZlFixd23Bq0S0ABAAMCAAN4AAM6BA.jpg
+app.get('/file/:filename', async (c) => {
+  const { filename } = c.req.param()
+  const tgFileId = filename.split('.')[0]
   
-  return new Response(fileStreamResponse.body, { headers })
+  if (!tgFileId) return c.text('Invalid file ID', 400)
+  
+  // Directly proxy without DB lookup, acting as a pass-through for existing external links
+  return proxyImageFromTelegram(c, tgFileId)
 })
 
 // Webhook setup helper (Optional admin route to set it up easily via curl)
