@@ -12,12 +12,12 @@ export async function authMiddleware(ctx: CustomContext, next: NextFunction) {
   const tg_id = String(ctx.from.id);
   const nickname = ctx.from.username || ctx.from.first_name || 'Unknown';
 
-  // Check if DB is completely empty (first user setup)
-  const [{ count }] = await ctx.db.select({ count: sql<number>`count(*)` }).from(users);
-
   let user = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
 
   if (!user) {
+    // Only check count if user doesn't exist to save D1 resources
+    const [{ count }] = await ctx.db.select({ count: sql<number>`count(*)` }).from(users);
+    
     if (count === 0) {
       // First ever user becomes active admin
       await ctx.db.insert(users).values({
@@ -48,7 +48,7 @@ export async function authMiddleware(ctx: CustomContext, next: NextFunction) {
       if (nextStatus === 'pending') {
         await ctx.reply('⏳ Your request has been sent! Please wait for an admin to approve you.');
         
-        // Notify the first admin (creator) or all admins
+        // Notify the first admin (creator) - Wrapped in try/catch to prevent 500 error loop
         try {
           const firstAdmin = await ctx.db.select().from(users).where(eq(users.is_admin, true)).orderBy(sql`created_at ASC`).limit(1).get();
           if (firstAdmin && firstAdmin.tg_id !== tg_id) {
@@ -60,7 +60,7 @@ export async function authMiddleware(ctx: CustomContext, next: NextFunction) {
             , { parse_mode: 'Markdown' });
           }
         } catch (err) {
-          console.error('[Admin Notify Error]', err);
+          console.error('[Admin Notify Error] Non-fatal:', err);
         }
         return;
       } else {
