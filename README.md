@@ -45,7 +45,7 @@ sequenceDiagram
   - `single` mode: Only the initial admin or explicitly allowed users can upload.
   - `multi` (Family) mode: Supports a full Whitelist/Blacklist mechanism. If `REQUIRE_APPROVAL` is enabled, new users are automatically placed in a `'pending'` state awaiting admin approval. Otherwise, they are instantly verified.
 - **Adaptive Web UI Dashboard**: 
-  - Generate a 2-hour encrypted login link directly from the bot via `/admin`.
+  - Generate a 2-hour encrypted login link directly from the bot via `/dashboard`.
   - **Admins**: Can manage all images globally, and approve/ban normal users via the Dashboard.
   - **Normal Users**: Get a personalized dashboard where they can exclusively view, manage, and toggle the public visibility of *their own* uploaded images.
 - **Synchronized Deletion**: Deleting an image in the Web UI can automatically delete the source file from your Telegram channel, saving space and preventing leaks.
@@ -118,6 +118,6 @@ npm run deploy
 After creating your bot in BotFather, you can set these commands using `/setcommands`:
 - `start` - Link your Telegram account and check permissions
 - `upload` - Interactive prompt to upload an image
-- `admin` - Get a secure 2-hour link to access the Web Admin Panel
+- `dashboard` - Get a secure 2-hour link to access the Web Admin Panel
 - `setadmin` - (Admin only) Set a user as admin: `/setadmin <user_id> [nickname]`
 - `deladmin` - (Admin only) Revoke admin rights from a user
