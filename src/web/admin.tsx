@@ -49,24 +49,36 @@ const Layout = (props: { title: string; isAdmin?: boolean; children: any }) => {
 
 // 1. Auth Middleware
 adminApp.use('*', async (c, next) => {
-  if (c.req.path === '/login' || c.req.path === '/logout') return next()
-
-  const token = getCookie(c, 'admin_token')
-  if (!token) return c.redirect('/admin/login?error=missing_token')
-
-  const db = drizzle(c.env.DB, { schema })
-  const session = await db.select().from(schema.adminSessions).where(eq(schema.adminSessions.token, token)).get()
-
-  if (!session || new Date(session.expires_at).getTime() < Date.now()) {
-    deleteCookie(c, 'admin_token')
-    return c.redirect('/admin/login?error=expired')
+  const path = c.req.path
+  // Allow login and logout routes to pass through
+  if (path.endsWith('/login') || path.endsWith('/logout')) {
+    return next()
   }
 
-  const user = await db.select().from(schema.users).where(eq(schema.users.tg_id, session.user_id)).get()
+  const token = getCookie(c, 'admin_token')
+  
+  // Special case: If user is accessing /admin but has a token in URL query,
+  // we let it pass to the handler so the handler can set the cookie.
+  const queryToken = c.req.query('token')
+  if (!token && !queryToken) {
+    return c.redirect('/admin/login?error=missing_token')
+  }
 
-  // Inject into context
-  c.set('userId', session.user_id)
-  c.set('isAdmin', user?.is_admin || false)
+  // If we have a cookie, validate it
+  if (token) {
+    const db = drizzle(c.env.DB, { schema })
+    const session = await db.select().from(schema.adminSessions).where(eq(schema.adminSessions.token, token)).get()
+
+    if (!session || new Date(session.expires_at).getTime() < Date.now()) {
+      deleteCookie(c, 'admin_token')
+      return c.redirect('/admin/login?error=expired')
+    }
+
+    const user = await db.select().from(schema.users).where(eq(schema.users.tg_id, session.user_id)).get()
+    c.set('userId', session.user_id)
+    c.set('isAdmin', user?.is_admin || false)
+  }
+  
   await next()
 })
 
