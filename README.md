@@ -40,12 +40,12 @@ sequenceDiagram
 ```
 ## Features
 
-- **Bot-Driven Storage**: Send images directly to your bot; it securely stores them in a private Telegram Channel and returns a shareable web link.
+- **Bot-Driven Storage**: Send images directly to your bot; it securely stores them in a private Telegram Channel and returns a shareable web link. Automatically handles multiple images (albums) silently with zero chat spam.
 - **Access Control & Whitelist**: 
   - `single` mode: Only the initial admin or explicitly allowed users can upload.
-  - `multi` (Family) mode: Supports a full Whitelist/Blacklist mechanism. If `REQUIRE_APPROVAL` is enabled, new users are automatically placed in a `'pending'` state awaiting admin approval. Otherwise, they are instantly verified.
+  - `multi` (Family) mode: Supports a full Whitelist/Blacklist mechanism. If `REQUIRE_APPROVAL` is enabled, new users who send `/start` to the bot are placed in a `'pending'` state awaiting admin approval. Otherwise, they are instantly verified.
 - **Adaptive Web UI Dashboard**: 
-  - Generate a 2-hour encrypted login link directly from the bot via `/dashboard`.
+  - Generate a 2-hour encrypted login link directly from the bot via `/dashboard`. The session strictly expires on both the server and your browser (auto-clearing cookies).
   - **Admins**: Can manage all images globally, and approve/ban normal users via the Dashboard.
   - **Normal Users**: Get a personalized dashboard where they can exclusively view, manage, and toggle the public visibility of *their own* uploaded images.
 - **Synchronized Deletion**: Deleting an image in the Web UI can automatically delete the source file from your Telegram channel, saving space and preventing leaks.
@@ -57,7 +57,7 @@ You must create a `.env` file referencing `.env.example`.
 - `BOT_TOKEN`: Get this from Telegram's `@BotFather`.
 - `CHANNEL_ID`: Create a Private Telegram Channel. Promote your bot as Admin there. Send a message to the channel and forward it to `@userinfobot` to get the numerical ID (should start with `-100`).
 - `ACCESS_MODE`: `single` (private personal use) or `multi` (friends/family can request to join).
-- `REQUIRE_APPROVAL`: `true` (admins must review/whitelist anyone who joins via Web UI) or `false` (everyone who knows the bot can use it instantly).
+- `REQUIRE_APPROVAL`: `true` (admins must review/whitelist anyone who sends `/start` to the bot) or `false` (everyone who knows the bot can use it instantly).
 - `WEBHOOK_SECRET`: A secure random password of your choice. Used to ensure requests only come from Telegram. *(Tip: Run `npm run generate-secret` to easily generate a secure one!)*
 - `WEBHOOK_PATH_SECRET`: A secure random short path to obfuscate your webhook URL (e.g. `.../webhook/<WEBHOOK_PATH_SECRET>`).
 - `BASE_URL`: The public URL where your Cloudflare worker is accessible, e.g., `https://my-app.workers.dev` (No trailing slash).
@@ -119,7 +119,9 @@ npm run deploy
 
 After creating your bot in BotFather, you can set these commands using `/setcommands`:
 - `start` - Link your Telegram account and check permissions
-- `upload` - Interactive prompt to upload an image
+- `help` - Show repository and basic bot info
+- `me` - View your profile ID, role, and total upload stats
+- `upload` - Prompt to upload an image
 - `dashboard` - Get a secure 2-hour link to access the Web Admin Panel
 - `setadmin` - (Admin only) Set a user as admin: `/setadmin <tg_id>`
 - `deladmin` - (Admin only) Revoke admin rights from a user
