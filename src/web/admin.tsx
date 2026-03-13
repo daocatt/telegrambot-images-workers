@@ -36,10 +36,9 @@ const Layout = (props: { title: string; isAdmin?: boolean; showGallery?: boolean
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{props.title}</title>
         <link rel="icon" type="image/png" href="/favicon.png" />
-        <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-        {/* Registration is placed as early as possible */}
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script dangerouslySetInnerHTML={{ __html: `
-          window._dashboard_data = () => ({
+          ;window._dashboard_data = () => ({
             selected: [],
             copiedId: null,
             toggleAll() {
@@ -63,7 +62,7 @@ const Layout = (props: { title: string; isAdmin?: boolean; showGallery?: boolean
              window._dash_loaded = true;
           });
         `}} />
-        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.x/dist/cdn.min.js"></script>
+        <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.0/cdn.min.js"></script>
         <style>
           [x-cloak] {'{ display: none !important; }'}
           .no-scrollbar::-webkit-scrollbar {'{ display: none; }'}
@@ -157,7 +156,7 @@ adminApp.get('/login', async (c) => {
     <html lang="en">
       <head>
         <title>Login - Telegram Admin</title>
-        <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
       </head>
       <body class="flex items-center justify-center min-h-screen bg-gray-100">
         <div class="p-8 bg-white rounded-xl shadow-lg text-center max-w-sm">
@@ -303,7 +302,7 @@ adminApp.get('/', async (c) => {
 
       {/* Batch Action Bar (Sticky Bottom) */}
       <div x-show="selected.length > 0" 
-           x-cloak
+           x-cloak=""
            x-transition:enter="transition ease-out duration-300 transform"
            x-transition:enter-start="opacity-0 translate-y-10"
            x-transition:enter-end="opacity-100 translate-y-0"
@@ -355,8 +354,8 @@ adminApp.get('/', async (c) => {
                  
                  {/* Feedback Overlay */}
                  <div x-show={`copiedId === "${img.id}"`} 
-                      x-cloak
-                      x-transition
+                      x-cloak=""
+                      x-transition=""
                       class="absolute inset-0 z-30 flex items-center justify-center bg-blue-600/90 text-white font-bold text-sm">
                    Copied!
                  </div>
