@@ -242,7 +242,7 @@ app.get('/g/:id', async (c) => {
            <head>
              <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
              <title>Locked Gallery - ${group.name}</title>
-             <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+             <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
            </head>
            <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
              <div class="p-8 bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm text-center border border-gray-700">
@@ -272,7 +272,7 @@ app.get('/g/:id', async (c) => {
       <head>
         <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${group.name} - Web Gallery</title>
-        <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <!-- PhotoSwipe Lightbox -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@5.3.7/dist/photoswipe.css">
         <style>
