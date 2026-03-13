@@ -35,7 +35,7 @@ const Layout = (props: { title: string; isAdmin?: boolean; showGallery?: boolean
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{props.title}</title>
-        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📷</text></svg>" />
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script dangerouslySetInnerHTML={{ __html: `
           ;window._dashboard_data = () => ({
@@ -146,6 +146,7 @@ adminApp.get('/login', async (c) => {
         secure: true,
         httpOnly: true,
         sameSite: 'Lax',
+        maxAge: 2 * 60 * 60, // Align exactly with 2 hours backend expiration
       })
       return c.redirect('/admin')
     }
