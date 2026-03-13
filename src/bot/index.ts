@@ -197,23 +197,7 @@ export function createBot(env: EnvBindings) {
         link_preview_options: { is_disabled: true }
       });
 
-      // Gallery Integration: Ask to group if enabled
-      if (env.ENABLE_GALLERY === 'true') {
-        const userGroups = await ctx.db.select().from(groups).where(eq(groups.user_id, String(ctx.from.id))).orderBy(desc(groups.created_at)).limit(5).all();
-        
-        if (userGroups.length > 0) {
-          const keyboard = new InlineKeyboard();
-          userGroups.forEach((g, index) => {
-            keyboard.text(g.name, `set_group:${id}:${g.id}`);
-            if ((index + 1) % 2 === 0) keyboard.row();
-          });
-          
-          await ctx.reply(`📂 **Add to Gallery?**\nSelect a collection below to categorize this image:`, {
-            reply_markup: keyboard,
-            reply_parameters: { message_id: responseMsg.message_id }
-          });
-        }
-      }
+
       
       console.log(`[INFO] Image uploaded: id=${id}, uploader=${ctx.from.id}, shared_via=file_id`);
     } catch (err: any) {
@@ -254,23 +238,7 @@ export function createBot(env: EnvBindings) {
         link_preview_options: { is_disabled: true }
       });
 
-      // Gallery Integration: Ask to group if enabled
-      if (env.ENABLE_GALLERY === 'true') {
-        const userGroups = await ctx.db.select().from(groups).where(eq(groups.user_id, String(ctx.from.id))).orderBy(desc(groups.created_at)).limit(5).all();
-        
-        if (userGroups.length > 0) {
-          const keyboard = new InlineKeyboard();
-          userGroups.forEach((g, index) => {
-            keyboard.text(g.name, `set_group:${id}:${g.id}`);
-            if ((index + 1) % 2 === 0) keyboard.row();
-          });
-          
-          await ctx.reply(`📂 **Add to Gallery?**\nSelect a collection below to categorize this image:`, {
-            reply_markup: keyboard,
-            reply_parameters: { message_id: responseMsg.message_id }
-          });
-        }
-      }
+
       
       console.log(`[INFO] Document uploaded as image: id=${id}, uploader=${ctx.from.id}, shared_via=file_id`);
     } catch (err: any) {
