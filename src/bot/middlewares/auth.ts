@@ -1,4 +1,4 @@
-import { NextFunction } from 'grammy';
+import { NextFunction, InlineKeyboard } from 'grammy';
 import { CustomContext } from '../context';
 import { users } from '../../db/schema';
 import { eq, sql } from 'drizzle-orm';
@@ -52,12 +52,18 @@ export async function authMiddleware(ctx: CustomContext, next: NextFunction) {
         try {
           const firstAdmin = await ctx.db.select().from(users).where(eq(users.is_admin, true)).orderBy(sql`created_at ASC`).limit(1).get();
           if (firstAdmin && firstAdmin.tg_id !== tg_id) {
+            const keyboard = new InlineKeyboard()
+              .text('✅ Approve', `admin_approve:${tg_id}`)
+              .text('🚫 Ban', `admin_ban:${tg_id}`);
+
             await ctx.api.sendMessage(firstAdmin.tg_id, 
               `🔔 **New User Request**\n\n` +
               `👤 **User:** ${nickname}\n` +
-              `🆔 **ID:** \`${tg_id}\`\n\n` +
-              `Use /approve to see pending users.`
-            , { parse_mode: 'Markdown' });
+              `🆔 **ID:** \`${tg_id}\``
+            , { 
+              parse_mode: 'Markdown',
+              reply_markup: keyboard
+            });
           }
         } catch (err) {
           console.error('[Admin Notify Error] Non-fatal:', err);

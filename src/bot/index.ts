@@ -134,12 +134,20 @@ export function createBot(env: EnvBindings) {
     try {
       const target = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
       if (!target) return ctx.reply('❌ User not found.');
+
+      if (target.status === 'active') {
+        return ctx.reply(`ℹ️ User \`${tg_id}\` (${target.nickname || 'Unknown'}) is already active.`);
+      }
       
       await ctx.db.update(users).set({ status: 'active' }).where(eq(users.tg_id, tg_id));
-      await ctx.reply(`✅ User \`${tg_id}\` (${target.nickname}) has been approved!`);
+      await ctx.reply(`✅ User \`${tg_id}\` (${target.nickname || 'Unknown'}) has been approved!`);
       
-      // Notify the user
-      await ctx.api.sendMessage(tg_id, '🎉 **Congratulations!** Your account has been approved. You can now use the bot!', { parse_mode: 'Markdown' });
+      // Notify the user in isolated try/catch to prevent notification block failures from showing as operation failure
+      try {
+        await ctx.api.sendMessage(tg_id, '🎉 **Congratulations!** Your account has been approved. You can now use the bot!', { parse_mode: 'Markdown' });
+      } catch (notifyErr) {
+        console.warn(`[Notify Warning] Failed to send approval message to user ${tg_id}:`, notifyErr);
+      }
     } catch (err) {
       await ctx.reply('❌ Operation failed.');
     }
@@ -155,9 +163,62 @@ export function createBot(env: EnvBindings) {
       if (!target) return ctx.reply('❌ User not found.');
 
       await ctx.db.update(users).set({ status: 'banned' }).where(eq(users.tg_id, tg_id));
-      await ctx.reply(`🚫 User \`${tg_id}\` (${target.nickname}) has been banned.`);
+      await ctx.reply(`🚫 User \`${tg_id}\` (${target.nickname || 'Unknown'}) has been banned.`);
     } catch (err) {
       await ctx.reply('❌ Operation failed.');
+    }
+  });
+
+  // Handle Admin User Approval Callback (One-Click Inline Actions)
+  bot.callbackQuery(/^admin_approve:(.+)$/, async (ctx) => {
+    if (!ctx.isAdmin) return await ctx.answerCallbackQuery('⛔️ Admin only.');
+    const tg_id = ctx.match[1];
+    try {
+      const target = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
+      if (!target) {
+        await ctx.editMessageText('❌ User not found.');
+        return await ctx.answerCallbackQuery();
+      }
+      
+      if (target.status === 'active') {
+        await ctx.editMessageText(`ℹ️ User \`${tg_id}\` (${target.nickname || 'Unknown'}) is already active.`);
+        return await ctx.answerCallbackQuery('Already active');
+      }
+
+      await ctx.db.update(users).set({ status: 'active' }).where(eq(users.tg_id, tg_id));
+      await ctx.editMessageText(`✅ User \`${tg_id}\` (${target.nickname || 'Unknown'}) has been approved!`);
+      await ctx.answerCallbackQuery('Approved successfully!');
+      
+      try {
+        await ctx.api.sendMessage(tg_id, '🎉 **Congratulations!** Your account has been approved. You can now use the bot!', { parse_mode: 'Markdown' });
+      } catch (err) {
+        console.warn(`[Notify Warning] Failed to notify ${tg_id}:`, err);
+      }
+    } catch (e) {
+      await ctx.answerCallbackQuery('❌ Operation failed.');
+    }
+  });
+
+  bot.callbackQuery(/^admin_ban:(.+)$/, async (ctx) => {
+    if (!ctx.isAdmin) return await ctx.answerCallbackQuery('⛔️ Admin only.');
+    const tg_id = ctx.match[1];
+    try {
+      const target = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
+      if (!target) {
+        await ctx.editMessageText('❌ User not found.');
+        return await ctx.answerCallbackQuery();
+      }
+
+      if (target.status === 'banned') {
+        await ctx.editMessageText(`ℹ️ User \`${tg_id}\` (${target.nickname || 'Unknown'}) is already banned.`);
+        return await ctx.answerCallbackQuery('Already banned');
+      }
+
+      await ctx.db.update(users).set({ status: 'banned' }).where(eq(users.tg_id, tg_id));
+      await ctx.editMessageText(`🚫 User \`${tg_id}\` (${target.nickname || 'Unknown'}) has been banned.`);
+      await ctx.answerCallbackQuery('User banned.');
+    } catch (e) {
+      await ctx.answerCallbackQuery('❌ Operation failed.');
     }
   });
 
