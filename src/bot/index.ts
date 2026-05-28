@@ -4,7 +4,7 @@ import { getDb } from '../db/client';
 import { authMiddleware } from './middlewares/auth';
 import { users, images, adminSessions, groups } from '../db/schema';
 import { nanoid } from 'nanoid';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, sql, desc, and } from 'drizzle-orm';
 
 // Industrial Security: Sanitize user input to prevent XSS, Script Injection and Markdown breaking
 function sanitizeCaption(text: string | undefined): string {
@@ -129,7 +129,27 @@ export function createBot(env: EnvBindings) {
   bot.command('approve', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
     const tg_id = ctx.match.trim();
-    if (!tg_id) return ctx.reply('Usage: /approve <tg_id>');
+
+    if (!tg_id) {
+      try {
+        const pendingUsers = await ctx.db.select().from(users).where(eq(users.status, 'pending')).all();
+        if (pendingUsers.length === 0) {
+          return ctx.reply('✅ No pending approval requests.');
+        }
+
+        const keyboard = new InlineKeyboard();
+        for (const u of pendingUsers) {
+          keyboard.text(`✅ Approve ${u.nickname || 'Unknown'} (${u.tg_id})`, `admin_approve:${u.tg_id}`).row();
+        }
+
+        return ctx.reply('⏳ **Please select a user to approve:**', {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+      } catch (err) {
+        return ctx.reply('❌ Failed to fetch pending users. Usage: /approve <tg_id>');
+      }
+    }
 
     try {
       const target = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
@@ -156,7 +176,27 @@ export function createBot(env: EnvBindings) {
   bot.command('banned', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
     const tg_id = ctx.match.trim();
-    if (!tg_id) return ctx.reply('Usage: /banned <tg_id>');
+
+    if (!tg_id) {
+      try {
+        const activeUsers = await ctx.db.select().from(users).where(and(eq(users.status, 'active'), eq(users.is_admin, false))).all();
+        if (activeUsers.length === 0) {
+          return ctx.reply('ℹ️ No active members to ban.');
+        }
+
+        const keyboard = new InlineKeyboard();
+        for (const u of activeUsers) {
+          keyboard.text(`🚫 Ban ${u.nickname || 'Unknown'} (${u.tg_id})`, `admin_ban:${u.tg_id}`).row();
+        }
+
+        return ctx.reply('⏳ **Please select a user to ban:**', {
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
+        });
+      } catch (err) {
+        return ctx.reply('❌ Failed to fetch active users. Usage: /banned <tg_id>');
+      }
+    }
 
     try {
       const target = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
