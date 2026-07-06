@@ -361,14 +361,9 @@ adminApp.get('/setup-credentials', async (c) => {
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script dangerouslySetInnerHTML={{ __html: `
           document.addEventListener('DOMContentLoaded', () => {
-            const savedEmail = localStorage.getItem('setup_email');
-            const savedCode = localStorage.getItem('setup_code');
+            const savedEmail = sessionStorage.getItem('setup_email');
             if (savedEmail) {
               document.getElementById('email').value = savedEmail;
-            }
-            if (savedCode) {
-              document.getElementById('code').value = savedCode;
-              document.getElementById('code-container').style.display = 'block';
             }
           });
 
@@ -382,7 +377,7 @@ adminApp.get('/setup-credentials', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
-              alert('Verification code sent successfully! Check your email or Telegram Bot chat.');
+              sessionStorage.setItem('setup_email', email);
               document.getElementById('code-container').style.display = 'block';
             } else {
               alert('Error: ' + data.error);
@@ -405,8 +400,7 @@ adminApp.get('/setup-credentials', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
-              localStorage.removeItem('setup_email');
-              localStorage.removeItem('setup_code');
+              sessionStorage.removeItem('setup_email');
               alert('Setup completed! You can now log in using email.');
               window.location.href = '/admin';
             } else {
@@ -424,7 +418,7 @@ adminApp.get('/setup-credentials', async (c) => {
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Email Address</label>
               <div class="flex gap-2">
-                <input type="email" id="email" oninput="localStorage.setItem('setup_email', this.value)" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="email" id="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                 <button type="button" onclick="sendVerificationCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                   Send Code
                 </button>
@@ -434,7 +428,7 @@ adminApp.get('/setup-credentials', async (c) => {
             <div id="code-container" style="display:none;" class="space-y-4">
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
-                <input type="text" id="code" oninput="localStorage.setItem('setup_code', this.value)" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
+                <input type="text" id="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
               </div>
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
@@ -1439,16 +1433,11 @@ adminApp.get('/profile', async (c) => {
           document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             if (params.get('success')) {
-              localStorage.removeItem('profile_email');
-              localStorage.removeItem('profile_code');
+              sessionStorage.removeItem('profile_email');
             } else {
-              const savedEmail = localStorage.getItem('profile_email');
-              const savedCode = localStorage.getItem('profile_code');
+              const savedEmail = sessionStorage.getItem('profile_email');
               if (savedEmail) {
                 document.getElementById('profile-email-input').value = savedEmail;
-              }
-              if (savedCode) {
-                document.getElementById('profile-code-input').value = savedCode;
               }
             }
           });
@@ -1463,6 +1452,7 @@ adminApp.get('/profile', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
+              sessionStorage.setItem('profile_email', email);
               alert('Verification code sent successfully! Check your email or Telegram Bot chat.');
             } else {
               alert('Error: ' + data.error);
@@ -1512,13 +1502,13 @@ adminApp.get('/profile', async (c) => {
               
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Email</label>
-                <input type="email" id="profile-email-input" name="email" oninput="localStorage.setItem('profile_email', this.value)" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="email" id="profile-email-input" name="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
                 <div class="flex gap-2">
-                  <input type="text" id="profile-code-input" name="code" oninput="localStorage.setItem('profile_code', this.value)" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
+                  <input type="text" id="profile-code-input" name="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
                   <button type="button" onclick="sendProfileCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                     Send Code
                   </button>
