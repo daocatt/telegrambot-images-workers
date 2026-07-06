@@ -1435,8 +1435,14 @@ adminApp.get('/profile', async (c) => {
           document.addEventListener('DOMContentLoaded', () => {
             const email = document.getElementById('profile-email-input');
             const code = document.getElementById('profile-code-input');
+            const nickname = document.getElementById('profile-nickname-input');
+            const currentPwd = document.getElementById('profile-current-password');
+            const newPwd = document.getElementById('profile-new-password');
             if (email) email.value = '';
             if (code) code.value = '';
+            if (nickname) nickname.value = '';
+            if (currentPwd) currentPwd.value = '';
+            if (newPwd) newPwd.value = '';
           });
 
           async function sendProfileCode() {
@@ -1484,7 +1490,7 @@ adminApp.get('/profile', async (c) => {
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Nickname</label>
                 <div class="flex gap-2">
-                  <input type="text" name="nickname" required placeholder="NewNickname" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                  <input type="text" id="profile-nickname-input" name="nickname" required autocomplete="off" placeholder="NewNickname" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                   <button type="submit" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                     Update
                   </button>
@@ -1525,7 +1531,7 @@ adminApp.get('/profile', async (c) => {
                 <div>
                   <label class="block text-xs font-bold uppercase mb-1">Current Password</label>
                   <div class="relative flex items-stretch">
-                    <input type="password" id="profile-current-password" name="current_password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                    <input type="password" id="profile-current-password" name="current_password" required autocomplete="off" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
                     <button type="button" onclick="const input = document.getElementById('profile-current-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
                       👁️
                     </button>
@@ -1535,7 +1541,7 @@ adminApp.get('/profile', async (c) => {
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
                 <div class="relative flex items-stretch">
-                  <input type="password" id="profile-new-password" name="new_password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                  <input type="password" id="profile-new-password" name="new_password" required autocomplete="off" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
                   <button type="button" onclick="const input = document.getElementById('profile-new-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
                     👁️
                   </button>
