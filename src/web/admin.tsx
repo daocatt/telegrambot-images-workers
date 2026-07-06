@@ -1130,7 +1130,7 @@ adminApp.get('/groups', async (c) => {
         </div>
 
         {/* Create Modal */}
-        <dialog id="createGroupModal" class="p-0 border-2 border-black shadow-2xl backdrop:bg-black/50 open:flex flex-col max-w-sm w-full rounded-none">
+        <dialog id="createGroupModal" class="fixed inset-0 m-auto p-0 border-2 border-black max-w-sm w-full h-fit rounded-none backdrop:bg-black/50 shadow-2xl hidden open:block">
           <div class="bg-white p-6 rounded-none">
             <h3 class="text-lg font-black uppercase mb-4 tracking-wider">Create New Gallery</h3>
             <form action="/admin/groups/create" method="post" class="space-y-4">
@@ -1171,7 +1171,7 @@ adminApp.get('/groups', async (c) => {
         </dialog>
 
         {/* Edit Modal */}
-        <dialog id="editGroupModal" class="p-0 border-2 border-black shadow-2xl backdrop:bg-black/50 open:flex flex-col max-w-sm w-full rounded-none">
+        <dialog id="editGroupModal" class="fixed inset-0 m-auto p-0 border-2 border-black max-w-sm w-full h-fit rounded-none backdrop:bg-black/50 shadow-2xl hidden open:block">
           <div class="bg-white p-6 rounded-none">
             <h3 class="text-lg font-black uppercase mb-4 tracking-wider">Edit Gallery</h3>
             <form x-bind:action="editingGroup ? `/admin/groups/${editingGroup.id}/update` : '#'" method="post" class="space-y-4">
