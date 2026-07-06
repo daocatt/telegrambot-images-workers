@@ -258,8 +258,14 @@ app.get('/g/:id', async (c) => {
   // 1. Passcode Check
   if (group.passcode) {
     const authCookie = getCookie(c, `gallery_auth_${id}`)
+    const error = c.req.query('error')
     if (!authCookie || !timingSafeEqual(authCookie, group.passcode)) {
        const safeName = escapeHtml(group.name)
+       const errorAlert = error ? `
+          <div class="bg-gray-100 border-l-4 border-black p-3 mb-4 text-xs font-bold text-red-600 rounded-none text-left">
+             ${escapeHtml(error)}
+          </div>
+       ` : '';
        return c.html(`
           <!DOCTYPE html>
           <html lang="en">
@@ -268,16 +274,24 @@ app.get('/g/:id', async (c) => {
               <title>Locked Gallery - ${safeName}</title>
               <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
             </head>
-            <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
-              <div class="p-8 bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm text-center border border-gray-700">
-                <div class="mb-6 inline-flex p-4 bg-gray-700 rounded-full text-yellow-400">
-                   <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <body class="bg-gray-100 text-black flex items-center justify-center min-h-screen font-mono">
+              <div class="p-8 bg-white border-2 border-black max-w-sm w-full text-center rounded-none shadow-md">
+                <div class="mb-4 inline-flex p-3 bg-gray-100 border border-black text-black">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                 </div>
-                <h1 class="text-2xl font-bold mb-2">${safeName}</h1>
-                <p class="text-gray-400 text-sm mb-6">This collection is password protected.</p>
+                <h1 class="text-xl font-black uppercase mb-1 tracking-wider">${safeName}</h1>
+                <p class="text-gray-500 text-xs mb-6">This collection is password protected.</p>
+                
+                ${errorAlert}
+                
                 <form action="/g/${encodeURIComponent(id)}/auth" method="post" class="space-y-4">
-                  <input type="password" name="passcode" autofocus required placeholder="Enter Passcode" class="w-full bg-gray-700 border-none rounded-xl px-4 py-3 text-center text-lg tracking-[0.5em] focus:ring-2 focus:ring-blue-500 outline-none" />
-                  <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">Unlock Collection</button>
+                  <div class="relative flex items-stretch">
+                    <input type="password" id="gallery-passcode" name="passcode" autofocus required placeholder="Passcode" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500 text-center" />
+                    <button type="button" onclick="const input = document.getElementById('gallery-passcode'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
+                      👁️
+                    </button>
+                  </div>
+                  <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase tracking-wider hover:bg-zinc-800 transition rounded-none border border-black cursor-pointer">Unlock Collection</button>
                 </form>
               </div>
             </body>
@@ -410,7 +424,7 @@ app.post('/g/:id/auth', async (c) => {
     return c.redirect(`/g/${encodeURIComponent(id)}`)
   }
 
-  return c.text('Invalid passcode', 401)
+  return c.redirect(`/g/${encodeURIComponent(id)}?error=Invalid+passcode`)
 })
 
 // Webhook setup helper (Optional admin route to set it up easily via curl)
