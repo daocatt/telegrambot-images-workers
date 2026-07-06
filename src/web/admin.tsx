@@ -216,7 +216,12 @@ adminApp.get('/login', async (c) => {
             </div>
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Password</label>
-              <input type="password" name="password" required placeholder="••••••••" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+              <div class="relative flex items-stretch">
+                <input type="password" id="login-password" name="password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <button type="button" onclick="const input = document.getElementById('login-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
+                  👁️
+                </button>
+              </div>
             </div>
             <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase tracking-wider hover:bg-zinc-800 transition rounded-none border border-black">
               Sign In
@@ -365,7 +370,12 @@ adminApp.get('/setup-credentials', async (c) => {
               </div>
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
-                <input type="password" id="password" required placeholder="••••••••" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <div class="relative flex items-stretch">
+                  <input type="password" id="setup-password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                  <button type="button" onclick="const input = document.getElementById('setup-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
+                    👁️
+                  </button>
+                </div>
               </div>
               <button type="button" onclick="verifyAndSetup()" class="w-full bg-black text-white py-2 text-sm font-bold uppercase hover:bg-zinc-800 rounded-none border border-black">
                 Verify & Save Credentials
@@ -1366,12 +1376,22 @@ adminApp.get('/profile', async (c) => {
               {user?.password_hash && (
                 <div>
                   <label class="block text-xs font-bold uppercase mb-1">Current Password</label>
-                  <input type="password" name="current_password" required placeholder="••••••••" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                  <div class="relative flex items-stretch">
+                    <input type="password" id="profile-current-password" name="current_password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                    <button type="button" onclick="const input = document.getElementById('profile-current-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
+                      👁️
+                    </button>
+                  </div>
                 </div>
               )}
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
-                <input type="password" name="new_password" required placeholder="••••••••" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                <div class="relative flex items-stretch">
+                  <input type="password" id="profile-new-password" name="new_password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                  <button type="button" onclick="const input = document.getElementById('profile-new-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
+                    👁️
+                  </button>
+                </div>
               </div>
               <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase hover:bg-zinc-800 rounded-none border border-black">
                 {user?.password_hash ? 'Update Password' : 'Set Password'}
