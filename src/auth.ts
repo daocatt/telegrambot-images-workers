@@ -114,11 +114,41 @@ export async function sendEmailVerificationCode(
     </div>
   `;
 
-  // Try to send via CF Email Sending
+  // Try to send via Resend API
   let sent = false;
-  if (env.EMAIL) {
+  const fromEmail = env.SENDER_EMAIL || `noreply@${new URL(env.BASE_URL).hostname}`;
+
+  if (env.RESEND_API_KEY) {
     try {
-      const fromEmail = env.SENDER_EMAIL || `noreply@${new URL(env.BASE_URL).hostname}`;
+      const resendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: `Telegram Image Host <${fromEmail}>`,
+          to: [email],
+          subject: subject,
+          html: htmlContent,
+          text: bodyText,
+        }),
+      });
+      if (resendResponse.ok) {
+        sent = true;
+        console.log(`Verification email sent to ${email} via Resend API.`);
+      } else {
+        const errorText = await resendResponse.text();
+        console.error(`Resend API returned error: ${errorText}`);
+      }
+    } catch (err) {
+      console.error("Failed to send email via Resend API:", err);
+    }
+  }
+
+  // Try to send via CF Email Sending if Resend was not used
+  if (!sent && env.EMAIL) {
+    try {
       await env.EMAIL.send({
         to: email,
         from: { email: fromEmail, name: "Telegram Image Host Auth" },
