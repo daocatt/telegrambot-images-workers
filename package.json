@@ -12,13 +12,13 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.1",
-    "grammy": "^1.41.1",
-    "hono": "^4.12.7",
-    "nanoid": "^5.1.6"
+    "drizzle-orm": "^0.45.2",
+    "grammy": "^1.44.0",
+    "hono": "^4.12.28",
+    "nanoid": "^5.1.16"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.9",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5.9.3",
     "wrangler": "^4.4.0"
   }

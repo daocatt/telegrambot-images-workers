@@ -5,7 +5,17 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../db/schema'
 import { eq, desc, and, like, count, sql, inArray } from 'drizzle-orm'
+import { nanoid } from 'nanoid'
 import { EnvBindings } from '../bot/context'
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 type ContextEnv = {
   Bindings: EnvBindings;
@@ -96,29 +106,38 @@ const Layout = (props: { title: string; isAdmin?: boolean; showGallery?: boolean
   )
 }
 
-// 1. Auth Middleware
+// 1. Auth + CSRF Middleware
 adminApp.use('*', async (c, next) => {
   const path = c.req.path
-  // Allow login and logout routes to pass through
   if (path.endsWith('/login') || path.endsWith('/logout')) {
     return next()
   }
 
+  if (c.req.method === 'POST') {
+    const origin = c.req.header('Origin') || c.req.header('Referer')
+    if (origin) {
+      const originHost = new URL(origin).hostname
+      const reqHost = new URL(c.req.url).hostname
+      if (originHost !== reqHost) {
+        return c.text('Forbidden: CSRF check failed', 403)
+      }
+    }
+  }
+
   const token = getCookie(c, 'admin_token')
-  
-  // Special case: If user is accessing /admin but has a token in URL query,
-  // we let it pass to the handler so the handler can set the cookie.
   const queryToken = c.req.query('token')
   if (!token && !queryToken) {
     return c.redirect('/admin/login?error=missing_token')
   }
 
-  // If we have a cookie, validate it
   if (token) {
     const db = drizzle(c.env.DB, { schema })
     const session = await db.select().from(schema.adminSessions).where(eq(schema.adminSessions.token, token)).get()
 
     if (!session || new Date(session.expires_at).getTime() < Date.now()) {
+      if (session) {
+        c.executionCtx.waitUntil(db.delete(schema.adminSessions).where(eq(schema.adminSessions.token, token)))
+      }
       deleteCookie(c, 'admin_token')
       return c.redirect('/admin/login?error=expired')
     }
@@ -146,8 +165,9 @@ adminApp.get('/login', async (c) => {
         secure: true,
         httpOnly: true,
         sameSite: 'Lax',
-        maxAge: 2 * 60 * 60, // Align exactly with 2 hours backend expiration
+        maxAge: 2 * 60 * 60,
       })
+      c.executionCtx.waitUntil(db.delete(schema.adminSessions).where(eq(schema.adminSessions.token, token)))
       return c.redirect('/admin')
     }
     return c.text('Invalid or expired login token. Please request a new one from the bot.', 401)
@@ -162,7 +182,7 @@ adminApp.get('/login', async (c) => {
       <body class="flex items-center justify-center min-h-screen bg-gray-100">
         <div class="p-8 bg-white rounded-xl shadow-lg text-center max-w-sm">
           <h2 class="text-2xl font-bold mb-4">Unauthorized</h2>
-          {error && <p class="text-red-500 mb-4">{error}</p>}
+          {error && <p class="text-red-500 mb-4">{escapeHtml(error)}</p>}
           <p class="text-gray-600 mb-6">You must generate a 2-hour login token from your Telegram bot using the 
             <span class="font-mono bg-gray-200 px-1 py-0.5 rounded ml-1">/admin</span> command.</p>
           <a href="https://t.me/" class="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600 transition">Go to Bot</a>
@@ -173,6 +193,11 @@ adminApp.get('/login', async (c) => {
 })
 
 adminApp.get('/logout', async (c) => {
+  const token = getCookie(c, 'admin_token')
+  if (token) {
+    const db = drizzle(c.env.DB, { schema })
+    c.executionCtx.waitUntil(db.delete(schema.adminSessions).where(eq(schema.adminSessions.token, token)))
+  }
   deleteCookie(c, 'admin_token', { path: '/' })
   return c.redirect('/admin/login')
 })
@@ -186,16 +211,16 @@ adminApp.get('/', async (c) => {
   // Pagination & Search params
   const page = parseInt(c.req.query('page') || '1')
   const search = c.req.query('q') || ''
+  const safeSearch = search.replace(/[%_]/g, '\\$&')
   const pageSize = 20
   const offset = (page - 1) * pageSize
 
-  // Build Query Conditions
   const groupId = c.req.query('gid') || ''
-  
+
   let baseWhere: any = isAdmin 
-    ? (search ? like(schema.images.caption, `%${search}%`) : undefined)
+    ? (search ? like(schema.images.caption, `%${safeSearch}%`) : undefined)
     : (search 
-        ? and(eq(schema.images.uploader_id, userId), like(schema.images.caption, `%${search}%`))
+        ? and(eq(schema.images.uploader_id, userId), like(schema.images.caption, `%${safeSearch}%`))
         : eq(schema.images.uploader_id, userId)
       )
 
@@ -286,7 +311,7 @@ adminApp.get('/', async (c) => {
           <input 
             type="text" 
             name="q" 
-            value={search as string} 
+             value={escapeHtml(search as string)}
             placeholder="Search captions..." 
             class="px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-64"
           />
@@ -349,8 +374,8 @@ adminApp.get('/', async (c) => {
             <div class="h-40 w-full bg-gray-200 relative group/img overflow-hidden">
                {/* Clickable Area (Copy Image) */}
                <div class="absolute inset-0 z-10 cursor-pointer"
-                    x-on:click={`copyUrl("${img.id}", "${img.tg_file_id}")`}>
-                 <img src={`/file/${img.tg_file_id}.jpg`} alt={img.id} loading="lazy" 
+                    x-on:click={`copyUrl("${escapeHtml(img.id)}", "${escapeHtml(img.tg_file_id)}")`}>
+                  <img src={`/file/${encodeURIComponent(img.tg_file_id)}.jpg`} alt={escapeHtml(img.id)} loading="lazy"
                       class={`w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110 ${img.is_broken ? 'grayscale blur-[2px]' : ''}`} />
                  
                  {/* Feedback Overlay */}
@@ -389,14 +414,14 @@ adminApp.get('/', async (c) => {
                    <span class={`px-1 rounded text-[8px] font-bold text-white shadow-sm ${user.status === 'active' ? 'bg-green-500' : user.status === 'banned' ? 'bg-red-500' : 'bg-yellow-500'}`}>
                      {user.status === 'active' ? 'A' : user.status === 'banned' ? 'B' : 'P'}
                    </span>
-                   <span class="bg-black/50 text-white text-[8px] px-1 py-0.5 rounded backdrop-blur-sm truncate max-w-[50px]">{user.nickname || user.tg_id}</span>
+                    <span class="bg-black/50 text-white text-[8px] px-1 py-0.5 rounded backdrop-blur-sm truncate max-w-[50px]">{escapeHtml(user.nickname || user.tg_id)}</span>
                  </div>
                )}
             </div>
             
             <div class="p-3 text-sm flex flex-col gap-2">
                <div class="flex items-center gap-2 mb-1">
-                 <a href={`/file/${img.tg_file_id}.jpg`} target="_blank" class="text-blue-600 hover:underline font-mono truncate">{img.id}.jpg</a>
+                  <a href={`/file/${encodeURIComponent(img.tg_file_id)}.jpg`} target="_blank" class="text-blue-600 hover:underline font-mono truncate">{img.id}.jpg</a>
                </div>
                
                <div class="flex items-center gap-2">
@@ -595,7 +620,7 @@ adminApp.get('/users', async (c) => {
             {usersList.map((user) => (
               <tr>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.tg_id}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.nickname}</td>
+                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{escapeHtml(user.nickname || '')}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                   {user.is_admin ? <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span> : <span class="text-gray-500">User</span>}
                 </td>
@@ -685,7 +710,7 @@ adminApp.get('/groups', async (c) => {
             <div class="bg-white rounded-xl shadow-sm border p-5 flex flex-col gap-4 group">
               <div class="flex justify-between items-start">
                 <div>
-                  <h3 class="text-lg font-bold text-gray-900">{g.name}</h3>
+                  <h3 class="text-lg font-bold text-gray-900">{escapeHtml(g.name)}</h3>
                   <div class="flex items-center gap-3 mt-1 text-xs text-gray-500">
                     <span>Images: <strong class="text-blue-600 font-bold">{g.imageCount}</strong></span>
                     <span class="text-gray-300">|</span>
@@ -840,7 +865,7 @@ adminApp.post('/groups/create', async (c) => {
   const userId = c.get('userId')
   const body = await c.req.parseBody()
   
-  const id = Math.random().toString(36).substring(2, 10)
+  const id = nanoid(8)
   await db.insert(schema.groups).values({
     id,
     user_id: userId,
