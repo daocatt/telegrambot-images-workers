@@ -427,22 +427,3 @@ app.get('/setWebhook', async (c) => {
 })
 
 export default app
-
-export const scheduled: ExportedHandlerScheduledHandler = async (event, env, ctx) => {
-  const db = drizzle((env as any).DB, { schema })
-  const now = Date.now()
-
-  try {
-    await db.delete(schema.adminSessions).where(sql`${schema.adminSessions.expires_at} < ${now}`)
-    console.log('[Cron] Cleaned up expired sessions')
-  } catch (err) {
-    console.error('[Cron] Failed to cleanup sessions:', err)
-  }
-
-  try {
-    await db.delete(schema.emailVerifications).where(sql`${schema.emailVerifications.expires_at} < ${now}`)
-    console.log('[Cron] Cleaned up expired email verifications')
-  } catch (err) {
-    console.error('[Cron] Failed to cleanup email verifications:', err)
-  }
-}

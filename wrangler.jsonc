@@ -11,21 +11,7 @@
       "migrations_dir": "drizzle"
     }
   ],
-  "triggers": {
-    "crons": ["0 3 * * *"]
-  },
   "env": {
-    // "snapflare": {
-    //   "name": "telegrambot-images-workers",
-    //   "d1_databases": [
-    //     {
-    //       "binding": "DB",
-    //       "database_name": "telegrambot_images_db",
-    //       "database_id": "5ff71b4f-f6ca-48a2-96e6-68c5708d9bfc",
-    //       "migrations_dir": "drizzle"
-    //     }
-    //   ]
-    // },
     "pot": {
       "name": "telegrambot-images-pot",
       "d1_databases": [
