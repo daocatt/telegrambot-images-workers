@@ -4,7 +4,7 @@ import { cors } from 'hono/cors'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../db/schema'
-import { eq, desc, and, like, count, sql, inArray } from 'drizzle-orm'
+import { eq, desc, and, like, count, sql, inArray, lt } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { EnvBindings } from '../bot/context'
 import { hashPassword, verifyPassword, sendEmailVerificationCode, verifyEmailCode, timingSafeEqual } from '../auth'
@@ -313,7 +313,7 @@ adminApp.post('/login-ticket', async (c) => {
     db.delete(schema.adminSessions)
       .where(and(
         eq(schema.adminSessions.user_id, record.user_id),
-        sql`${schema.adminSessions.expires_at} < ${Date.now()}`
+        lt(schema.adminSessions.expires_at, new Date())
       ))
   )
 
@@ -388,7 +388,7 @@ adminApp.post('/login', async (c) => {
     db.delete(schema.adminSessions)
       .where(and(
         eq(schema.adminSessions.user_id, user.tg_id),
-        sql`${schema.adminSessions.expires_at} < ${Date.now()}`
+        lt(schema.adminSessions.expires_at, new Date())
       ))
   )
 
