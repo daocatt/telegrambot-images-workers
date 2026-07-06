@@ -2,7 +2,7 @@ import { Bot, InlineKeyboard } from 'grammy';
 import { CustomContext, EnvBindings } from './context';
 import { getDb } from '../db/client';
 import { authMiddleware } from './middlewares/auth';
-import { users, images, adminSessions, groups } from '../db/schema';
+import { users, images, adminSessions, groups, tgLoginTickets } from '../db/schema';
 import { nanoid } from 'nanoid';
 import { eq, sql, desc, and } from 'drizzle-orm';
 
@@ -81,23 +81,31 @@ export function createBot(env: EnvBindings) {
   });
 
   bot.command('dashboard', async (ctx) => {
-    const token = crypto.randomUUID().replace(/-/g, '');
-    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // +2 hours
+    const ticket = crypto.randomUUID();
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
 
     try {
-      await ctx.db.insert(adminSessions).values({
-        token,
+      await ctx.db.insert(tgLoginTickets).values({
+        ticket,
         user_id: String(ctx.from?.id),
+        code,
         expires_at: expiresAt,
       });
 
       const roleText = ctx.isAdmin ? 'Admin' : 'Personal';
       const adminBase = (env.ADMIN_URL || env.BASE_URL).replace(/\/$/, ''); // Remove trailing slash if any
-      const loginUrl = `${adminBase}/admin/login?token=${token}`;
+      const loginUrl = `${adminBase}/admin/login?ticket=${ticket}`;
       
-      await ctx.reply(`🛡 **${roleText} Dashboard Access**\n\nYour management link is ready. Please click the button below to log in. This link will expire in 2 hours for security.\n\n🔗 [Click here to Login](${loginUrl})`, { parse_mode: 'Markdown' });
+      await ctx.reply(
+        `🛡 **${roleText} Dashboard Access**\n\n` +
+        `Your management login page is ready. Please click the link below and enter the verification code sent here.\n\n` +
+        `🔗 [Click here to Login](${loginUrl})\n\n` +
+        `🔑 Verification Code: \`${code}\` *(Expires in 5 minutes)*`,
+        { parse_mode: 'Markdown' }
+      );
     } catch (e) {
-      await ctx.reply('❌ Failed to generate access token.');
+      await ctx.reply('❌ Failed to generate login code.');
     }
   });
 
