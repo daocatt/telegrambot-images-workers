@@ -360,6 +360,18 @@ adminApp.get('/setup-credentials', async (c) => {
         <title>Setup Credentials - Admin Console</title>
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script dangerouslySetInnerHTML={{ __html: `
+          document.addEventListener('DOMContentLoaded', () => {
+            const savedEmail = localStorage.getItem('setup_email');
+            const savedCode = localStorage.getItem('setup_code');
+            if (savedEmail) {
+              document.getElementById('email').value = savedEmail;
+            }
+            if (savedCode) {
+              document.getElementById('code').value = savedCode;
+              document.getElementById('code-container').style.display = 'block';
+            }
+          });
+
           async function sendVerificationCode() {
             const email = document.getElementById('email').value.trim();
             if (!email) return alert('Please enter email');
@@ -393,6 +405,8 @@ adminApp.get('/setup-credentials', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
+              localStorage.removeItem('setup_email');
+              localStorage.removeItem('setup_code');
               alert('Setup completed! You can now log in using email.');
               window.location.href = '/admin';
             } else {
@@ -410,7 +424,7 @@ adminApp.get('/setup-credentials', async (c) => {
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Email Address</label>
               <div class="flex gap-2">
-                <input type="email" id="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="email" id="email" oninput="localStorage.setItem('setup_email', this.value)" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                 <button type="button" onclick="sendVerificationCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                   Send Code
                 </button>
@@ -420,7 +434,7 @@ adminApp.get('/setup-credentials', async (c) => {
             <div id="code-container" style="display:none;" class="space-y-4">
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
-                <input type="text" id="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
+                <input type="text" id="code" oninput="localStorage.setItem('setup_code', this.value)" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
               </div>
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
