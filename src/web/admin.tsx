@@ -723,24 +723,150 @@ adminApp.get('/', async (c) => {
             </div>
           )}
           
-          {/* Upload Modal */}
-          <dialog id="uploadModal" class="p-0 border-2 border-black shadow-2xl backdrop:bg-black/50 open:flex flex-col max-w-sm w-full rounded-none">
-            <div class="bg-white p-6 rounded-none">
-              <h3 class="text-lg font-black uppercase mb-4 tracking-wider">Upload New Image</h3>
-              <form action="/admin/upload" method="post" enctype="multipart/form-data" class="space-y-4">
-                <div>
-                  <label class="block text-xs font-bold uppercase mb-1">Select File</label>
-                  <input type="file" name="file" accept="image/*" required class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold uppercase mb-1">Caption (Optional)</label>
-                  <input type="text" name="caption" placeholder="My vacation photo" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
-                </div>
-                <div class="flex justify-end gap-3 mt-6 border-t border-black pt-4">
-                   <button type="button" onclick="document.getElementById('uploadModal').close()" class="px-4 py-2 text-sm text-black border border-black hover:bg-gray-100 rounded-none uppercase font-bold">Cancel</button>
-                   <button type="submit" class="px-4 py-2 text-sm bg-black text-white hover:bg-zinc-800 rounded-none uppercase font-bold border border-black">Upload</button>
-                </div>
-              </form>
+          {/* Upload Modal with Custom Drag & Drop Multi-uploader */}
+          <dialog id="uploadModal" class="fixed inset-0 m-auto p-6 bg-white border-2 border-black max-w-md w-full h-fit rounded-none flex flex-col justify-between backdrop:bg-black/50 shadow-2xl open:block">
+            <div x-data="{
+              files: [],
+              isDragging: false,
+              isUploading: false,
+              addFiles(fileList) {
+                const limit = 10;
+                const newFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+                if (this.files.length + newFiles.length > limit) {
+                  alert('You can only upload up to 10 images at once.');
+                  return;
+                }
+                newFiles.forEach(f => {
+                  this.files.push({
+                    file: f,
+                    name: f.name,
+                    size: (f.size / 1024).toFixed(1) + ' KB',
+                    status: 'pending', // 'pending', 'uploading', 'success', 'error'
+                    progress: 0,
+                    error: ''
+                  });
+                });
+              },
+              removeFile(index) {
+                if (this.isUploading) return;
+                this.files.splice(index, 1);
+              },
+              async startUpload() {
+                if (this.files.length === 0 || this.isUploading) return;
+                this.isUploading = true;
+                
+                for (let i = 0; i < this.files.length; i++) {
+                  const item = this.files[i];
+                  if (item.status === 'success') continue;
+                  
+                  item.status = 'uploading';
+                  const formData = new FormData();
+                  formData.append('file', item.file);
+                  
+                  try {
+                    const res = await fetch('/admin/upload-api', {
+                      method: 'POST',
+                      body: formData
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      item.status = 'success';
+                    } else {
+                      item.status = 'error';
+                      item.error = data.error || 'Upload failed';
+                    }
+                  } catch (err) {
+                    item.status = 'error';
+                    item.error = 'Network error';
+                  }
+                }
+                
+                this.isUploading = false;
+                // If at least one file succeeded, reload to refresh dashboard
+                if (this.files.some(f => f.status === 'success')) {
+                  window.location.reload();
+                }
+              }
+            }" class="space-y-4">
+              <div class="flex justify-between items-center border-b border-black pb-2">
+                <h3 class="text-md font-black uppercase tracking-wider">Upload Images</h3>
+                <span class="text-xs text-gray-500 uppercase font-bold" x-text="files.length + '/10 files'"></span>
+              </div>
+              
+              {/* Drag and Drop Zone */}
+              <div 
+                x-on:dragover="$event.preventDefault(); isDragging = true"
+                x-on:dragleave="$event.preventDefault(); isDragging = false"
+                x-on:drop="$event.preventDefault(); isDragging = false; addFiles($event.dataTransfer.files)"
+                x-on:click="$refs.fileInput.click()"
+                x-bind:class="isDragging ? 'bg-gray-100 border-black' : 'border-black hover:bg-gray-50'"
+                class="border-2 border-dashed p-6 text-center cursor-pointer transition select-none flex flex-col items-center justify-center space-y-2 rounded-none"
+              >
+                <input 
+                  type="file" 
+                  x-ref="fileInput" 
+                  class="hidden" 
+                  multiple 
+                  accept="image/*" 
+                  x-on:change="addFiles($event.target.files); $event.target.value = ''" 
+                />
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <div class="text-xs font-bold uppercase tracking-wider">Drag & drop files or click to browse</div>
+                <div class="text-[10px] text-gray-500">Supports JPG, PNG, WEBP. Max 10 images.</div>
+              </div>
+
+              {/* Selected Files List */}
+              <div class="max-h-48 overflow-y-auto space-y-2 no-scrollbar" x-show="files.length > 0">
+                <template x-for="(item, index) in files" x-bind:key="index">
+                  <div class="flex items-center justify-between p-2 border border-black text-xs rounded-none bg-gray-50">
+                    <div class="flex flex-col min-w-0 pr-4">
+                      <span class="font-bold truncate" x-text="item.name"></span>
+                      <span class="text-[10px] text-gray-500" x-text="item.size"></span>
+                      <span class="text-[10px] text-red-600 font-bold" x-show="item.status === 'error'" x-text="item.error"></span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      {/* Status Badges */}
+                      <span x-show="item.status === 'pending'" class="text-[9px] font-bold text-gray-500 uppercase">Pending</span>
+                      <span x-show="item.status === 'uploading'" class="text-[9px] font-bold text-black uppercase animate-pulse">Uploading</span>
+                      <span x-show="item.status === 'success'" class="text-[9px] font-bold text-green-600 uppercase">Success</span>
+                      
+                      <button 
+                        type="button" 
+                        x-on:click="$event.stopPropagation(); removeFile(index)" 
+                        x-show="!isUploading" 
+                        class="text-red-600 hover:bg-red-50 p-1 border border-transparent hover:border-red-600 rounded-none"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              {/* Modal Footer Controls */}
+              <div class="flex justify-end gap-3 border-t border-black pt-4">
+                 <button 
+                   type="button" 
+                   onclick="document.getElementById('uploadModal').close()" 
+                   x-show="!isUploading"
+                   class="px-4 py-2 text-sm text-black border border-black hover:bg-gray-100 rounded-none uppercase font-bold"
+                 >
+                   Cancel
+                 </button>
+                 <button 
+                   type="button" 
+                   x-on:click="startUpload()"
+                   x-bind:disabled="files.length === 0 || isUploading"
+                   x-bind:class="(files.length === 0 || isUploading) ? 'bg-gray-300 border-gray-300 text-gray-500 cursor-not-allowed' : 'bg-black text-white hover:bg-zinc-800'"
+                   class="px-4 py-2 text-sm border border-black rounded-none uppercase font-bold transition"
+                 >
+                   <span x-text="isUploading ? 'Uploading...' : 'Start Upload'"></span>
+                 </button>
+              </div>
             </div>
           </dialog>
         </div>
@@ -1368,8 +1494,8 @@ adminApp.post('/profile/change-password', async (c) => {
   return c.redirect('/admin/profile?success=Password+updated+successfully')
 })
 
-// Web Image Upload
-adminApp.post('/upload', async (c) => {
+// Web Image Upload API
+adminApp.post('/upload-api', async (c) => {
   const db = drizzle(c.env.DB, { schema })
   const userId = c.get('userId')
   
@@ -1378,7 +1504,7 @@ adminApp.post('/upload', async (c) => {
   const caption = String(body['caption'] || '').trim()
 
   if (!file || file.size === 0) {
-    return c.redirect('/admin?error=No+file+uploaded')
+    return c.json({ success: false, error: 'No file uploaded' }, 400)
   }
 
   try {
@@ -1398,7 +1524,7 @@ adminApp.post('/upload', async (c) => {
     const tgData = await tgRes.json() as any
     if (!tgRes.ok || !tgData.ok) {
       console.error('Telegram upload failed:', tgData)
-      return c.redirect(`/admin?error=Telegram+upload+failed:+${encodeURIComponent(tgData.description || 'Unknown error')}`)
+      return c.json({ success: false, error: tgData.description || 'Telegram upload failed' }, 500)
     }
 
     // 2. Extract tg_file_id and channel_msg_id
@@ -1419,10 +1545,13 @@ adminApp.post('/upload', async (c) => {
       created_at: new Date()
     })
 
-    return c.redirect('/admin')
+    const baseUrl = c.env.BASE_URL.replace(/\/$/, '')
+    const url = `${baseUrl}/file/${tgFileId}.jpg`
+
+    return c.json({ success: true, id, url })
   } catch (err: any) {
     console.error('Web upload error:', err)
-    return c.redirect(`/admin?error=Upload+error:+${encodeURIComponent(err.message)}`)
+    return c.json({ success: false, error: err.message }, 500)
   }
 })
 
