@@ -360,13 +360,6 @@ adminApp.get('/setup-credentials', async (c) => {
         <title>Setup Credentials - Admin Console</title>
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script dangerouslySetInnerHTML={{ __html: `
-          document.addEventListener('DOMContentLoaded', () => {
-            const savedEmail = sessionStorage.getItem('setup_email');
-            if (savedEmail) {
-              document.getElementById('email').value = savedEmail;
-            }
-          });
-
           async function sendVerificationCode() {
             const email = document.getElementById('email').value.trim();
             if (!email) return alert('Please enter email');
@@ -377,7 +370,6 @@ adminApp.get('/setup-credentials', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
-              sessionStorage.setItem('setup_email', email);
               document.getElementById('code-container').style.display = 'block';
             } else {
               alert('Error: ' + data.error);
@@ -400,7 +392,6 @@ adminApp.get('/setup-credentials', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
-              sessionStorage.removeItem('setup_email');
               alert('Setup completed! You can now log in using email.');
               window.location.href = '/admin';
             } else {
@@ -1430,18 +1421,6 @@ adminApp.get('/profile', async (c) => {
       {html`<!DOCTYPE html>`}
       <Layout title="Personal Center" isAdmin={user?.is_admin} isSuperAdmin={isSuperAdmin} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
         <script dangerouslySetInnerHTML={{ __html: `
-          document.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('success')) {
-              sessionStorage.removeItem('profile_email');
-            } else {
-              const savedEmail = sessionStorage.getItem('profile_email');
-              if (savedEmail) {
-                document.getElementById('profile-email-input').value = savedEmail;
-              }
-            }
-          });
-
           async function sendProfileCode() {
             const email = document.getElementById('profile-email-input').value.trim();
             if (!email) return alert('Please enter email first');
@@ -1452,7 +1431,6 @@ adminApp.get('/profile', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
-              sessionStorage.setItem('profile_email', email);
               alert('Verification code sent successfully! Check your email or Telegram Bot chat.');
             } else {
               alert('Error: ' + data.error);
