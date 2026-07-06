@@ -360,6 +360,17 @@ adminApp.get('/setup-credentials', async (c) => {
         <title>Setup Credentials - Admin Console</title>
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script dangerouslySetInnerHTML={{ __html: `
+          document.addEventListener('DOMContentLoaded', () => {
+            const email = document.getElementById('email');
+            const code = document.getElementById('code');
+            const password = document.getElementById('setup-password');
+            const codeContainer = document.getElementById('code-container');
+            if (email) email.value = '';
+            if (code) code.value = '';
+            if (password) password.value = '';
+            if (codeContainer) codeContainer.style.display = 'none';
+          });
+
           async function sendVerificationCode() {
             const email = document.getElementById('email').value.trim();
             if (!email) return alert('Please enter email');
@@ -409,7 +420,7 @@ adminApp.get('/setup-credentials', async (c) => {
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Email Address</label>
               <div class="flex gap-2">
-                <input type="email" id="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="email" id="email" required autocomplete="off" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                 <button type="button" onclick="sendVerificationCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                   Send Code
                 </button>
@@ -419,12 +430,12 @@ adminApp.get('/setup-credentials', async (c) => {
             <div id="code-container" style="display:none;" class="space-y-4">
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
-                <input type="text" id="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
+                <input type="text" id="code" required autocomplete="off" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
               </div>
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
                 <div class="relative flex items-stretch">
-                  <input type="password" id="setup-password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                  <input type="password" id="setup-password" required autocomplete="off" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                   <button type="button" onclick="const input = document.getElementById('setup-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
                     👁️
                   </button>
@@ -1421,6 +1432,13 @@ adminApp.get('/profile', async (c) => {
       {html`<!DOCTYPE html>`}
       <Layout title="Personal Center" isAdmin={user?.is_admin} isSuperAdmin={isSuperAdmin} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
         <script dangerouslySetInnerHTML={{ __html: `
+          document.addEventListener('DOMContentLoaded', () => {
+            const email = document.getElementById('profile-email-input');
+            const code = document.getElementById('profile-code-input');
+            if (email) email.value = '';
+            if (code) code.value = '';
+          });
+
           async function sendProfileCode() {
             const email = document.getElementById('profile-email-input').value.trim();
             if (!email) return alert('Please enter email first');
@@ -1480,13 +1498,13 @@ adminApp.get('/profile', async (c) => {
               
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Email</label>
-                <input type="email" id="profile-email-input" name="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="email" id="profile-email-input" name="email" required autocomplete="off" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
                 <div class="flex gap-2">
-                  <input type="text" id="profile-code-input" name="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
+                  <input type="text" id="profile-code-input" name="code" required autocomplete="off" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
                   <button type="button" onclick="sendProfileCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                     Send Code
                   </button>
