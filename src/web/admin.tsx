@@ -4,7 +4,7 @@ import { cors } from 'hono/cors'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../db/schema'
-import { eq, desc, and, like, count, sql, inArray } from 'drizzle-orm'
+import { eq, desc, asc, and, like, count, sql, inArray } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { EnvBindings } from '../bot/context'
 import { hashPassword, verifyPassword, sendEmailVerificationCode, verifyEmailCode } from '../auth'
@@ -23,6 +23,7 @@ type ContextEnv = {
   Variables: {
     userId: string;
     isAdmin: boolean;
+    isSuperAdmin: boolean;
   }
 }
 
@@ -36,7 +37,7 @@ adminApp.use('*', cors({
 }))
 
 // Template wrapper with Right Angles and Black/White aesthetics
-const Layout = (props: { title: string; isAdmin?: boolean; showGallery?: boolean; children: any }) => {
+const Layout = (props: { title: string; isAdmin?: boolean; isSuperAdmin?: boolean; showGallery?: boolean; children: any }) => {
   return (
     <html lang="en">
       <head>
@@ -85,7 +86,7 @@ const Layout = (props: { title: string; isAdmin?: boolean; showGallery?: boolean
             </h1>
             <nav class="flex items-center space-x-3 md:space-x-4 overflow-x-auto no-scrollbar py-1">
               <a href="/admin" class="text-black hover:bg-black hover:text-white px-2 py-1 text-sm font-bold border border-transparent hover:border-black transition whitespace-nowrap">Images</a>
-              {props.isAdmin && (
+              {props.isSuperAdmin && (
                 <a href="/admin/users" class="text-black hover:bg-black hover:text-white px-2 py-1 text-sm font-bold border border-transparent hover:border-black transition whitespace-nowrap">Users</a>
               )}
               {props.showGallery && (
@@ -160,6 +161,10 @@ adminApp.use('*', async (c, next) => {
 
   c.set('userId', session.user_id)
   c.set('isAdmin', user.is_admin)
+
+  // Find super admin (oldest active admin user)
+  const superAdmin = await db.select().from(schema.users).where(eq(schema.users.is_admin, true)).orderBy(asc(schema.users.created_at)).limit(1).get()
+  c.set('isSuperAdmin', superAdmin ? user.tg_id === superAdmin.tg_id : false)
 
   // Redirect to setup credentials if not completed
   if (!user.email || !user.password_hash) {
@@ -455,6 +460,7 @@ adminApp.get('/', async (c) => {
   const db = drizzle(c.env.DB, { schema })
   const userId = c.get('userId')
   const isAdmin = c.get('isAdmin')
+  const isSuperAdmin = c.get('isSuperAdmin')
 
   // Pagination & Search params
   const page = parseInt(c.req.query('page') || '1')
@@ -526,7 +532,7 @@ adminApp.get('/', async (c) => {
   return c.html(
     <>
       {html`<!DOCTYPE html>`}
-      <Layout title="Images Dashboard" isAdmin={isAdmin} showGallery={isGalleryEnabled}>
+      <Layout title="Images Dashboard" isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} showGallery={isGalleryEnabled}>
         <div x-data="dashboard" class="relative">
           {error && (
             <div class="bg-gray-100 border-l-4 border-red-600 p-4 mb-6 text-sm font-bold text-red-600 rounded-none">
@@ -1045,9 +1051,22 @@ adminApp.get('/groups', async (c) => {
   const db = drizzle(c.env.DB, { schema })
   const userId = c.get('userId')
   const isAdmin = c.get('isAdmin')
+  const isSuperAdmin = c.get('isSuperAdmin')
 
   const query = isAdmin ? undefined : eq(schema.groups.user_id, userId)
   
+  // Read page parameters
+  const page = parseInt(c.req.query('page') || '1')
+  const pageSize = 12
+  const offset = (page - 1) * pageSize
+
+  // Get total groups count
+  const countQuery = isAdmin 
+    ? db.select({ total: count() }).from(schema.groups)
+    : db.select({ total: count() }).from(schema.groups).where(eq(schema.groups.user_id, userId))
+  const [{ total }] = await countQuery.all()
+  const totalPages = Math.ceil(total / pageSize)
+
   const groupsList = await db.select({
     id: schema.groups.id,
     name: schema.groups.name,
@@ -1061,12 +1080,14 @@ adminApp.get('/groups', async (c) => {
   .where(query)
   .groupBy(schema.groups.id)
   .orderBy(desc(schema.groups.created_at))
+  .limit(pageSize)
+  .offset(offset)
   .all()
 
   return c.html(
     <>
       {html`<!DOCTYPE html>`}
-      <Layout title="Gallery Manager" isAdmin={isAdmin} showGallery={true}>
+      <Layout title="Gallery Manager" isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} showGallery={true}>
         <div x-data="{ editingGroup: null }">
           <div class="flex items-center justify-between mb-6 border-b border-black pb-6">
             <h2 class="text-xl font-bold uppercase tracking-wider">My Collections</h2>
@@ -1138,6 +1159,31 @@ adminApp.get('/groups', async (c) => {
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div class="mt-8 flex justify-center items-center gap-2">
+            {page > 1 && (
+              <a href={`/admin/groups?page=${page - 1}`} 
+                 class="px-4 py-2 border border-black bg-white text-sm font-bold hover:bg-gray-50 transition rounded-none uppercase">
+                Previous
+              </a>
+            )}
+            
+            <div class="flex gap-1">
+               <span class="px-4 py-2 text-sm text-gray-600 font-medium">
+                 Page {page} of {totalPages}
+               </span>
+            </div>
+
+            {page < totalPages && (
+              <a href={`/admin/groups?page=${page + 1}`} 
+                 class="px-4 py-2 border border-black bg-white text-sm font-bold hover:bg-gray-50 transition rounded-none uppercase">
+                Next
+              </a>
+            )}
+          </div>
+        )}
 
         {/* Create Modal */}
         <dialog id="createGroupModal" class="fixed inset-0 m-auto p-0 border-2 border-black max-w-sm w-full h-fit rounded-none backdrop:bg-black/50 shadow-2xl hidden open:block">
@@ -1281,6 +1327,7 @@ adminApp.post('/groups/:id/delete', async (c) => {
 // Profile (Personal Center) Page
 adminApp.get('/profile', async (c) => {
   const userId = c.get('userId')
+  const isSuperAdmin = c.get('isSuperAdmin')
   const db = drizzle(c.env.DB, { schema })
   const user = await db.select().from(schema.users).where(eq(schema.users.tg_id, userId)).get()
   const error = c.req.query('error')
@@ -1289,7 +1336,7 @@ adminApp.get('/profile', async (c) => {
   return c.html(
     <>
       {html`<!DOCTYPE html>`}
-      <Layout title="Personal Center" isAdmin={user?.is_admin} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
+      <Layout title="Personal Center" isAdmin={user?.is_admin} isSuperAdmin={isSuperAdmin} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
         <script dangerouslySetInnerHTML={{ __html: `
           async function sendProfileCode() {
             const email = document.getElementById('profile-email-input').value.trim();
