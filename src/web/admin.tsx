@@ -1436,6 +1436,23 @@ adminApp.get('/profile', async (c) => {
       {html`<!DOCTYPE html>`}
       <Layout title="Personal Center" isAdmin={user?.is_admin} isSuperAdmin={isSuperAdmin} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
         <script dangerouslySetInnerHTML={{ __html: `
+          document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('success')) {
+              localStorage.removeItem('profile_email');
+              localStorage.removeItem('profile_code');
+            } else {
+              const savedEmail = localStorage.getItem('profile_email');
+              const savedCode = localStorage.getItem('profile_code');
+              if (savedEmail) {
+                document.getElementById('profile-email-input').value = savedEmail;
+              }
+              if (savedCode) {
+                document.getElementById('profile-code-input').value = savedCode;
+              }
+            }
+          });
+
           async function sendProfileCode() {
             const email = document.getElementById('profile-email-input').value.trim();
             if (!email) return alert('Please enter email first');
@@ -1495,13 +1512,13 @@ adminApp.get('/profile', async (c) => {
               
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Email</label>
-                <input type="email" id="profile-email-input" name="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="email" id="profile-email-input" name="email" oninput="localStorage.setItem('profile_email', this.value)" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
                 <div class="flex gap-2">
-                  <input type="text" name="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
+                  <input type="text" id="profile-code-input" name="code" oninput="localStorage.setItem('profile_code', this.value)" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
                   <button type="button" onclick="sendProfileCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                     Send Code
                   </button>
