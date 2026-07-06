@@ -1177,6 +1177,21 @@ adminApp.get('/profile', async (c) => {
               <div><span class="font-bold text-gray-500 uppercase">Registered Email:</span> <span class="font-bold">{escapeHtml(user?.email || 'None')}</span></div>
             </div>
 
+            {/* Nickname Modification Form */}
+            <form action="/admin/profile/change-nickname" method="post" class="space-y-4 border-t border-black pt-4">
+              <h3 class="text-sm font-black uppercase tracking-wider">Change Nickname</h3>
+              <p class="text-xs text-gray-600">Min 4 characters, no special symbols.</p>
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1">New Nickname</label>
+                <div class="flex gap-2">
+                  <input type="text" name="nickname" required placeholder="NewNickname" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                  <button type="submit" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
+                    Update
+                  </button>
+                </div>
+              </div>
+            </form>
+
             {/* Email Setup / Verification */}
             <form action="/admin/profile/change-email" method="post" class="space-y-4 border-t border-black pt-4">
               <h3 class="text-sm font-black uppercase tracking-wider">Change / Setup Email</h3>
@@ -1228,6 +1243,25 @@ adminApp.get('/profile', async (c) => {
 })
 
 // Profile Action Endpoints
+adminApp.post('/profile/change-nickname', async (c) => {
+  const userId = c.get('userId')
+  const body = await c.req.parseBody()
+  const nickname = String(body['nickname'] || '').trim()
+
+  // Validate nickname: at least 4 chars, only alphanumeric, underscores, Chinese characters
+  const nicknameRegex = /^[a-zA-Z0-9_\u4e00-\u9fa5]{4,32}$/
+  if (!nicknameRegex.test(nickname)) {
+    return c.redirect('/admin/profile?error=Nickname+must+be+at+least+4+characters+and+contain+no+special+symbols')
+  }
+
+  const db = drizzle(c.env.DB, { schema })
+  await db.update(schema.users).set({
+    nickname
+  }).where(eq(schema.users.tg_id, userId))
+
+  return c.redirect('/admin/profile?success=Nickname+updated+successfully')
+})
+
 adminApp.post('/profile/change-email', async (c) => {
   const userId = c.get('userId')
   const body = await c.req.parseBody()
