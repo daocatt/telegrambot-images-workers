@@ -88,66 +88,33 @@ export async function sendEmailVerificationCode(
   const db = getDb(env.DB);
   const now = Date.now();
 
-  // --- Rate limiting: check existing record ---
   const existing = await db
     .select()
     .from(emailVerifications)
     .where(eq(emailVerifications.email, email))
     .get();
 
+  const todayMidnightUTC = new Date();
+  todayMidnightUTC.setUTCHours(0, 0, 0, 0);
+
+  const isNewDay = !existing?.day_reset_at ||
+    existing.day_reset_at.getTime() < todayMidnightUTC.getTime();
+
   if (existing) {
-    // 60-second cooldown between sends
-    if (existing.last_sent_at && now - new Date(existing.last_sent_at).getTime() < 60_000) {
-      const remaining = Math.ceil((60_000 - (now - new Date(existing.last_sent_at).getTime())) / 1000);
+    if (existing.last_sent_at && now - existing.last_sent_at.getTime() < 60_000) {
+      const remaining = Math.ceil((60_000 - (now - existing.last_sent_at.getTime())) / 1000);
       throw new Error(`Please wait ${remaining} seconds before requesting another code.`);
     }
-
-    // Daily limit: 10 requests per email per UTC day
-    const todayMidnightUTC = new Date();
-    todayMidnightUTC.setUTCHours(0, 0, 0, 0);
-
-    const isNewDay = !existing.day_reset_at ||
-      new Date(existing.day_reset_at).getTime() < todayMidnightUTC.getTime();
 
     if (!isNewDay && existing.send_count >= 10) {
       throw new Error('Daily verification code limit reached (10/day). Please try again tomorrow.');
     }
   }
 
-  // Generate 6-digit code
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(now + 15 * 60 * 1000); // expires in 15 minutes
+  const expiresAt = new Date(now + 15 * 60 * 1000);
   const lastSentAt = new Date(now);
-
-  // Calculate today's UTC midnight for the daily window
-  const todayMidnightUTC = new Date();
-  todayMidnightUTC.setUTCHours(0, 0, 0, 0);
-
-  // Determine new send_count
-  const isNewDay = !existing?.day_reset_at ||
-    new Date(existing.day_reset_at).getTime() < todayMidnightUTC.getTime();
   const newSendCount = isNewDay ? 1 : (existing?.send_count ?? 0) + 1;
-
-  await db
-    .insert(emailVerifications)
-    .values({
-      email,
-      code,
-      expires_at: expiresAt,
-      send_count: newSendCount,
-      last_sent_at: lastSentAt,
-      day_reset_at: todayMidnightUTC,
-    })
-    .onConflictDoUpdate({
-      target: emailVerifications.email,
-      set: {
-        code,
-        expires_at: expiresAt,
-        send_count: newSendCount,
-        last_sent_at: lastSentAt,
-        day_reset_at: todayMidnightUTC,
-      },
-    });
 
   const subject = "Email Verification Code - Telegram Image Host";
   const bodyText = `Your email verification code is: ${code}. It expires in 15 minutes.`;
@@ -162,7 +129,6 @@ export async function sendEmailVerificationCode(
     </div>
   `;
 
-  // Try to send via Resend API
   let sent = false;
   const fromEmail = env.SENDER_EMAIL || `noreply@${new URL(env.BASE_URL).hostname}`;
 
@@ -195,7 +161,6 @@ export async function sendEmailVerificationCode(
     }
   }
 
-  // Try to send via CF Email Sending if Resend was not used
   if (!sent && env.EMAIL) {
     try {
       const senderName = env.SENDER_NAME || "Telegram Image Host Auth";
@@ -213,10 +178,8 @@ export async function sendEmailVerificationCode(
     }
   }
 
-  // Fallback 1: Log to console
   console.log(`[VERIFICATION CODE] Email: ${email}, Code: ${code}`);
 
-  // Fallback 2: Send code to Telegram Chat
   if (tgId && env.BOT_TOKEN) {
     try {
       await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
@@ -232,6 +195,27 @@ export async function sendEmailVerificationCode(
       console.error("Failed to send Telegram backup verification notification:", tgErr);
     }
   }
+
+  await db
+    .insert(emailVerifications)
+    .values({
+      email,
+      code,
+      expires_at: expiresAt,
+      send_count: newSendCount,
+      last_sent_at: lastSentAt,
+      day_reset_at: todayMidnightUTC,
+    })
+    .onConflictDoUpdate({
+      target: emailVerifications.email,
+      set: {
+        code,
+        expires_at: expiresAt,
+        send_count: newSendCount,
+        last_sent_at: lastSentAt,
+        day_reset_at: todayMidnightUTC,
+      },
+    });
 
   return code;
 }
@@ -249,7 +233,7 @@ export async function verifyEmailCode(
     .get();
 
   if (!record) return false;
-  if (new Date(record.expires_at).getTime() < Date.now()) return false;
+  if (record.expires_at.getTime() < Date.now()) return false;
   if (!timingSafeEqual(record.code, code)) return false;
 
   // Cleanup code after successful verification
