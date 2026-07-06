@@ -76,9 +76,12 @@ export const emailVerifications = sqliteTable('email_verifications', {
 // TgLoginTickets table
 export const tgLoginTickets = sqliteTable('tg_login_tickets', {
   ticket: text('ticket').primaryKey(), // UUID
-  user_id: text('user_id').notNull(),
+  user_id: text('user_id')
+    .notNull()
+    .references(() => users.tg_id, { onDelete: 'cascade' }),
   code: text('code').notNull(), // 6-digit code
   expires_at: integer('expires_at', { mode: 'timestamp' }).notNull(),
-});
-
+}, (table) => ({
+  userIdx: index('tg_login_tickets_user_id_idx').on(table.user_id),
+}));
 
