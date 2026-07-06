@@ -27,7 +27,7 @@ export async function authMiddleware(ctx: CustomContext, next: NextFunction) {
         status: 'active',
         created_at: new Date(),
       });
-      user = { tg_id, nickname, is_admin: true, status: 'active', created_at: new Date() };
+      user = { tg_id, nickname, is_admin: true, status: 'active', created_at: new Date(), email: null, password_hash: null, email_verified: false };
     } else {
       // Not first user
       if (ctx.env.ACCESS_MODE === 'single') {
@@ -43,7 +43,7 @@ export async function authMiddleware(ctx: CustomContext, next: NextFunction) {
         status: nextStatus,
         created_at: new Date(),
       });
-      user = { tg_id, nickname, is_admin: false, status: nextStatus, created_at: new Date() };
+      user = { tg_id, nickname, is_admin: false, status: nextStatus, created_at: new Date(), email: null, password_hash: null, email_verified: false };
 
       if (nextStatus === 'pending') {
         await ctx.reply('⏳ Your request has been sent! Please wait for an admin to approve you.');
@@ -76,6 +76,8 @@ export async function authMiddleware(ctx: CustomContext, next: NextFunction) {
   }
 
   // At this point, `user` exists. Check status
+  if (!user) return;
+
   if (user.status === 'banned') {
     // Silently drop banned user
     return;
