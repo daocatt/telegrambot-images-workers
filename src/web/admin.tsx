@@ -723,8 +723,7 @@ adminApp.get('/', async (c) => {
             </div>
           )}
           
-          {/* Upload Modal with Custom Drag & Drop Multi-uploader */}
-          <dialog id="uploadModal" class="fixed inset-0 m-auto p-6 bg-white border-2 border-black max-w-md w-full h-fit rounded-none flex flex-col justify-between backdrop:bg-black/50 shadow-2xl open:block">
+          <dialog id="uploadModal" class="fixed inset-0 m-auto p-6 bg-white border-2 border-black max-w-md w-full h-fit rounded-none backdrop:bg-black/50 shadow-2xl hidden open:flex open:flex-col open:justify-between">
             <div x-data="{
               files: [],
               isDragging: false,
