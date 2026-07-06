@@ -12,10 +12,10 @@ export async function hashPassword(password: string): Promise<string> {
     passwordBuffer,
     'PBKDF2',
     false,
-    ['deriveBits', 'deriveKey']
+    ['deriveBits']
   );
   
-  const pbkdf2Key = await crypto.subtle.deriveKey(
+  const derivedBits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
       salt: salt,
@@ -23,13 +23,10 @@ export async function hashPassword(password: string): Promise<string> {
       hash: 'SHA-256'
     },
     keyMaterial,
-    { name: 'HMAC', hash: 'SHA-256', length: 256 },
-    true,
-    ['sign']
+    256
   );
   
-  const exportedKey = await crypto.subtle.exportKey('raw', pbkdf2Key) as ArrayBuffer;
-  const hashHex = Array.from(new Uint8Array(exportedKey)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
   
   return `pbkdf2_sha256$100000$${saltHex}$${hashHex}`;
 }
@@ -52,10 +49,10 @@ export async function verifyPassword(password: string, storedHash: string): Prom
     passwordBuffer,
     'PBKDF2',
     false,
-    ['deriveBits', 'deriveKey']
+    ['deriveBits']
   );
   
-  const pbkdf2Key = await crypto.subtle.deriveKey(
+  const derivedBits = await crypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
       salt: salt,
@@ -63,13 +60,10 @@ export async function verifyPassword(password: string, storedHash: string): Prom
       hash: 'SHA-256'
     },
     keyMaterial,
-    { name: 'HMAC', hash: 'SHA-256', length: 256 },
-    true,
-    ['sign']
+    256
   );
   
-  const exportedKey = await crypto.subtle.exportKey('raw', pbkdf2Key) as ArrayBuffer;
-  const currentHashHex = Array.from(new Uint8Array(exportedKey)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const currentHashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
   
   return currentHashHex === hashHex;
 }
