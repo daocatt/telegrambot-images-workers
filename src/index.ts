@@ -287,7 +287,15 @@ app.get('/g/:id', async (c) => {
   }
 
   // 2. Fetch Images
-  const images = await db.select().from(schema.images).where(eq(schema.images.group_id, id)).orderBy(schema.images.sort_order).all()
+  const page = parseInt(c.req.query('page') || '1')
+  const pageSize = 24
+  const offset = (page - 1) * pageSize
+
+  // Fetch count
+  const [{ totalImages }] = await db.select({ totalImages: count() }).from(schema.images).where(eq(schema.images.group_id, id)).all()
+  const totalPages = Math.ceil(totalImages / pageSize)
+
+  const images = await db.select().from(schema.images).where(eq(schema.images.group_id, id)).orderBy(schema.images.sort_order).limit(pageSize).offset(offset).all()
 
   const safeGroupName = escapeHtml(group.name)
   return c.html(`
@@ -314,7 +322,7 @@ app.get('/g/:id', async (c) => {
         <header class="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b">
            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
               <h1 class="text-xl font-bold truncate pr-4">${safeGroupName}</h1>
-              <span class="text-xs font-medium bg-gray-100 px-2.5 py-1 rounded-full text-gray-500">${images.length} Photos</span>
+              <span class="text-xs font-medium bg-gray-100 px-2.5 py-1 rounded-full text-gray-500">${totalImages} Photos</span>
            </div>
         </header>
 
@@ -344,6 +352,25 @@ app.get('/g/:id', async (c) => {
                 </a>
               `}).join('')}
            </div>
+
+           <!-- Pagination Controls -->
+           ${totalPages > 1 ? `
+             <div class="mt-12 flex justify-center items-center gap-4">
+               ${page > 1 ? `
+                 <a href="/g/${encodeURIComponent(id)}?page=${page - 1}" class="px-5 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-semibold hover:bg-gray-100 transition shadow-sm text-black">
+                   ← Previous
+                 </a>
+               ` : ''}
+               <span class="text-sm font-medium text-gray-500">
+                 Page ${page} of ${totalPages}
+               </span>
+               ${page < totalPages ? `
+                 <a href="/g/${encodeURIComponent(id)}?page=${page + 1}" class="px-5 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-semibold hover:bg-gray-100 transition shadow-sm text-black">
+                   Next →
+                 </a>
+               ` : ''}
+             </div>
+           ` : ''}
         </main>
 
         <footer class="py-12 text-center text-gray-400 text-sm">
