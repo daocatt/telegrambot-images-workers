@@ -1155,6 +1155,23 @@ adminApp.get('/profile', async (c) => {
     <>
       {html`<!DOCTYPE html>`}
       <Layout title="Personal Center" isAdmin={user?.is_admin} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
+        <script dangerouslySetInnerHTML={{ __html: `
+          async function sendProfileCode() {
+            const email = document.getElementById('profile-email-input').value.trim();
+            if (!email) return alert('Please enter email first');
+            const res = await fetch('/admin/api/auth/send-code-profile', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ email })
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('Verification code sent successfully! Check your email or Telegram Bot chat.');
+            } else {
+              alert('Error: ' + data.error);
+            }
+          }
+        ` }} />
         <div class="max-w-md bg-white border-2 border-black p-6 rounded-none">
           <h2 class="text-xl font-black uppercase tracking-wider mb-2 border-b border-black pb-4">Personal Center</h2>
           
@@ -1192,32 +1209,28 @@ adminApp.get('/profile', async (c) => {
               </div>
             </form>
 
-            {/* Email Setup / Verification */}
-            <form action="/admin/profile/change-email" method="post" class="space-y-4 border-t border-black pt-4">
+            {/* Email Setup / Verification Form */}
+            <form action="/admin/profile/update-email" method="post" class="space-y-4 border-t border-black pt-4">
               <h3 class="text-sm font-black uppercase tracking-wider">Change / Setup Email</h3>
-              <p class="text-xs text-gray-600">Enter a new email. A code will be sent to the email and your Telegram chat to verify it.</p>
+              
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Email</label>
-                <div class="flex gap-2">
-                  <input type="email" name="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
-                  <button type="submit" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
-                    Send Code
-                  </button>
-                </div>
+                <input type="email" id="profile-email-input" name="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
               </div>
-            </form>
 
-            <form action="/admin/profile/verify-email" method="post" class="space-y-4 pt-2">
-              <h3 class="text-sm font-black uppercase tracking-wider">Verify Verification Code</h3>
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
                 <div class="flex gap-2">
                   <input type="text" name="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
-                  <button type="submit" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
-                    Verify Code
+                  <button type="button" onclick="sendProfileCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
+                    Send Code
                   </button>
                 </div>
               </div>
+
+              <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase hover:bg-zinc-800 rounded-none border border-black">
+                Update Email
+              </button>
             </form>
 
             {/* Password Modification Form */}
@@ -1262,43 +1275,51 @@ adminApp.post('/profile/change-nickname', async (c) => {
   return c.redirect('/admin/profile?success=Nickname+updated+successfully')
 })
 
-adminApp.post('/profile/change-email', async (c) => {
-  const userId = c.get('userId')
-  const body = await c.req.parseBody()
-  const email = String(body['email'] || '').trim().toLowerCase()
-
-  if (!email || !email.includes('@')) {
-    return c.redirect('/admin/profile?error=Invalid+email+address')
-  }
+adminApp.post('/api/auth/send-code-profile', async (c) => {
+  const sessionToken = getCookie(c, 'admin_token')
+  if (!sessionToken) return c.json({ success: false, error: 'Unauthorized' }, 401)
 
   const db = drizzle(c.env.DB, { schema })
+  const session = await db.select().from(schema.adminSessions).where(eq(schema.adminSessions.token, sessionToken)).get()
+  if (!session) return c.json({ success: false, error: 'Unauthorized' }, 401)
+
+  const body = await c.req.json()
+  const email = String(body.email || '').trim().toLowerCase()
+
+  if (!email || !email.includes('@')) {
+    return c.json({ success: false, error: 'Invalid email address' })
+  }
 
   // Check unique email across other users
   const existingUser = await db.select().from(schema.users).where(eq(schema.users.email, email)).get()
-  if (existingUser && existingUser.tg_id !== userId) {
-    return c.redirect('/admin/profile?error=Email+already+linked+to+another+account')
+  if (existingUser && existingUser.tg_id !== session.user_id) {
+    return c.json({ success: false, error: 'Email is already linked to another account' })
   }
 
-  // Generate code and save state (using the current user session)
-  // Set code session in cookies temporarily for verify step or retrieve from DB
   try {
-    await sendEmailVerificationCode(email, userId, c.env)
-    // We store the target email in session or cookie so the next verify request knows which email it is verifying
-    setCookie(c, 'pending_verify_email', email, { path: '/admin', maxAge: 900 })
-    return c.redirect('/admin/profile?success=Verification+code+sent')
+    await sendEmailVerificationCode(email, session.user_id, c.env)
+    return c.json({ success: true })
   } catch (err: any) {
-    return c.redirect(`/admin/profile?error=${encodeURIComponent(err.message)}`)
+    return c.json({ success: false, error: err.message })
   }
 })
 
-adminApp.post('/profile/verify-email', async (c) => {
+adminApp.post('/profile/update-email', async (c) => {
   const userId = c.get('userId')
   const body = await c.req.parseBody()
+  const email = String(body['email'] || '').trim().toLowerCase()
   const code = String(body['code'] || '').trim()
-  const email = getCookie(c, 'pending_verify_email')
 
-  if (!email) {
-    return c.redirect('/admin/profile?error=No+pending+email+verification')
+  if (!email || !code) {
+    return c.redirect('/admin/profile?error=Email+and+verification+code+are+required')
+  }
+
+  const db = drizzle(c.env.DB, { schema })
+  
+  // Check unique email
+  const existingUser = await db.select().from(schema.users).where(eq(schema.users.email, email)).get()
+  if (existingUser && existingUser.tg_id !== userId) {
+    return c.redirect('/admin/profile?error=Email+is+already+linked+to+another+account')
   }
 
   const isValid = await verifyEmailCode(email, code, c.env)
@@ -1306,14 +1327,12 @@ adminApp.post('/profile/verify-email', async (c) => {
     return c.redirect('/admin/profile?error=Invalid+or+expired+verification+code')
   }
 
-  const db = drizzle(c.env.DB, { schema })
   await db.update(schema.users).set({
     email,
     email_verified: true
   }).where(eq(schema.users.tg_id, userId))
 
-  deleteCookie(c, 'pending_verify_email', { path: '/admin' })
-  return c.redirect('/admin/profile?success=Email+verified+and+linked+successfully')
+  return c.redirect('/admin/profile?success=Email+updated+successfully')
 })
 
 adminApp.post('/profile/change-password', async (c) => {
