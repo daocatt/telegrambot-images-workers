@@ -45,7 +45,7 @@ sequenceDiagram
   - `single` mode: Only the initial admin or explicitly allowed users can upload.
   - `multi` (Family) mode: Supports a full Whitelist/Blacklist mechanism. If `REQUIRE_APPROVAL` is enabled, new users who send `/start` to the bot are placed in a `'pending'` state awaiting admin approval. Otherwise, they are instantly verified.
 - **Adaptive Web UI Dashboard**: 
-  - Generate a 2-hour encrypted login link directly from the bot via `/dashboard`. The session strictly expires on both the server and your browser (auto-clearing cookies).
+  - Generate a secure 5-minute ticket link via `/dashboard` and verify with a 6-digit verification code sent directly to your Telegram chat. Once authorized, it issues a secure persistent session cookie.
   - **Admins**: Can manage all images globally, and approve/ban normal users via the Dashboard.
   - **Normal Users**: Get a personalized dashboard where they can exclusively view, manage, and toggle the public visibility of *their own* uploaded images.
 - **Synchronized Deletion**: Deleting an image in the Web UI can automatically delete the source file from your Telegram channel, saving space and preventing leaks.
@@ -118,16 +118,14 @@ npm run deploy
 ### Bot Commands Configuration
 
 After creating your bot in BotFather, you can set these commands using `/setcommands`:
-- `start` - Link your Telegram account and check permissions
-- `help` - Show repository and basic bot info
-- `me` - View your profile ID, role, and total upload stats
+- `start` - Link your Telegram account and setup web login credentials
+- `help` - Show help and basic commands list
+- `me` - View your profile, email setup status, and total upload stats
 - `upload` - Prompt to upload an image
-- `dashboard` - Get a secure 2-hour link to access the Web Admin Panel
-- `setadmin` - (Admin only) Set a user as admin: `/setadmin <tg_id>`
-- `deladmin` - (Admin only) Revoke admin rights from a user
-- `pending` - (Admin only) List all users awaiting approval
+- `dashboard` - Get a secure 5-minute link & 6-digit verification code to access the Admin Panel
+- `pending` - (Admin only) List all pending users awaiting approval
 - `approve` - (Admin only) Approve a pending user: `/approve <tg_id>`
-- `banned` - (Admin only) Ban a user from using the bot: `/banned <tg_id>`
+- `ban` - (Admin only) Ban a user from using the bot: `/ban <tg_id>`
 
 ## Industrial-Grade Features
 
