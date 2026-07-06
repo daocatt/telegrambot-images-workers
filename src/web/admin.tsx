@@ -380,7 +380,7 @@ adminApp.get('/setup-credentials', async (c) => {
           async function verifyAndSetup() {
             const email = document.getElementById('email').value.trim();
             const code = document.getElementById('code').value.trim();
-            const password = document.getElementById('password').value;
+            const password = document.getElementById('setup-password').value;
 
             if (password.length < 8) {
               return alert('Password must be at least 8 characters long.');
