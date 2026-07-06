@@ -284,12 +284,7 @@ adminApp.post('/login-ticket', async (c) => {
   const code = String(body['code'] || '').trim()
 
   const db = drizzle(c.env.DB, { schema })
-  
-  // Clean up expired tickets
   const now = Date.now()
-  c.executionCtx.waitUntil(
-    db.delete(schema.tgLoginTickets).where(sql`${schema.tgLoginTickets.expires_at} < ${now}`)
-  )
 
   const record = await db.select().from(schema.tgLoginTickets).where(eq(schema.tgLoginTickets.ticket, ticket)).get()
   

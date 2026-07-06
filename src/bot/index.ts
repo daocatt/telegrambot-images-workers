@@ -86,6 +86,11 @@ export function createBot(env: EnvBindings) {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
 
     try {
+      // Clean up expired tickets for this user
+      const now = Date.now();
+      await ctx.db.delete(tgLoginTickets)
+        .where(and(eq(tgLoginTickets.user_id, String(ctx.from?.id)), sql`${tgLoginTickets.expires_at} < ${now}`));
+
       await ctx.db.insert(tgLoginTickets).values({
         ticket,
         user_id: String(ctx.from?.id),
