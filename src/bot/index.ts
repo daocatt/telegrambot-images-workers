@@ -4,7 +4,7 @@ import { getDb } from '../db/client';
 import { authMiddleware } from './middlewares/auth';
 import { users, images, adminSessions, groups, tgLoginTickets } from '../db/schema';
 import { nanoid } from 'nanoid';
-import { eq, sql, desc, and } from 'drizzle-orm';
+import { eq, sql, desc, and, lt } from 'drizzle-orm';
 
 // Industrial Security: Sanitize user input to prevent XSS, Script Injection and Markdown breaking
 function sanitizeCaption(text: string | undefined): string {
@@ -87,9 +87,8 @@ export function createBot(env: EnvBindings) {
 
     try {
       // Clean up expired tickets for this user
-      const now = Date.now();
       await ctx.db.delete(tgLoginTickets)
-        .where(and(eq(tgLoginTickets.user_id, String(ctx.from?.id)), sql`${tgLoginTickets.expires_at} < ${now}`));
+        .where(and(eq(tgLoginTickets.user_id, String(ctx.from?.id)), lt(tgLoginTickets.expires_at, new Date())));
 
       await ctx.db.insert(tgLoginTickets).values({
         ticket,
