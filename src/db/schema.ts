@@ -73,3 +73,12 @@ export const emailVerifications = sqliteTable('email_verifications', {
   day_reset_at: integer('day_reset_at', { mode: 'timestamp' }), // midnight UTC of current day window
 });
 
+// TgLoginTickets table
+export const tgLoginTickets = sqliteTable('tg_login_tickets', {
+  ticket: text('ticket').primaryKey(), // UUID
+  user_id: text('user_id').notNull(),
+  code: text('code').notNull(), // 6-digit code
+  expires_at: integer('expires_at', { mode: 'timestamp' }).notNull(),
+});
+
+

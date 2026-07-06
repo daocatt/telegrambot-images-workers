@@ -7,7 +7,7 @@ import * as schema from '../db/schema'
 import { eq, desc, and, like, count, sql, inArray } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { EnvBindings } from '../bot/context'
-import { hashPassword, verifyPassword, sendEmailVerificationCode, verifyEmailCode } from '../auth'
+import { hashPassword, verifyPassword, sendEmailVerificationCode, verifyEmailCode, timingSafeEqual } from '../auth'
 
 function maskEmail(email: string): string {
   if (!email) return 'Not Setup';
@@ -188,25 +188,44 @@ adminApp.use('*', async (c, next) => {
 
 // 2. Auth Routes
 adminApp.get('/login', async (c) => {
-  const token = c.req.query('token')
+  const ticket = c.req.query('ticket')
   const error = c.req.query('error')
   
-  if (token) {
-    const db = drizzle(c.env.DB, { schema })
-    const session = await db.select().from(schema.adminSessions).where(eq(schema.adminSessions.token, token)).get()
-    
-    if (session && new Date(session.expires_at).getTime() > Date.now()) {
-      setCookie(c, 'admin_token', token, {
-        path: '/',
-        secure: true,
-        httpOnly: true,
-        sameSite: 'Lax',
-        maxAge: 2 * 60 * 60,
-      })
-      // BUG FIX: Do NOT delete session from database, otherwise subsequent requests fail middleware check!
-      return c.redirect('/admin')
-    }
-    return c.text('Invalid or expired login token. Please request a new one from the bot.', 401)
+  if (ticket) {
+    return c.html(
+      <html lang="en">
+        <head>
+          <title>Verification - Telegram Admin</title>
+          <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        </head>
+        <body class="flex items-center justify-center min-h-screen bg-gray-100 font-mono text-black">
+          <div class="p-8 bg-white border-2 border-black max-w-sm w-full rounded-none">
+            <h2 class="text-xl font-black uppercase tracking-wider mb-2 text-center border-b border-black pb-4">Bot Verification</h2>
+            <p class="text-xs text-gray-500 mb-6 text-center">Please enter the 6-digit verification code sent to your Telegram chat.</p>
+            
+            {error && (
+              <div class="bg-gray-100 border-l-4 border-black p-3 mb-4 text-xs font-bold text-red-600 rounded-none">
+                {escapeHtml(error)}
+              </div>
+            )}
+            
+            <form action="/admin/login-ticket" method="post" class="space-y-4">
+              <input type="hidden" name="ticket" value={ticket} />
+              <div>
+                <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
+                <input type="text" name="code" required autocomplete="off" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
+              </div>
+              <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase tracking-wider hover:bg-zinc-800 transition rounded-none border border-black cursor-pointer">
+                Confirm Login
+              </button>
+            </form>
+            <div class="mt-6 border-t border-black pt-4 text-center">
+              <a href="/admin/login" class="text-xs text-gray-600 hover:underline">Back to standard login</a>
+            </div>
+          </div>
+        </body>
+      </html>
+    )
   }
 
   return c.html(
@@ -257,6 +276,62 @@ adminApp.get('/login', async (c) => {
       </body>
     </html>
   )
+})
+
+adminApp.post('/login-ticket', async (c) => {
+  const body = await c.req.parseBody()
+  const ticket = String(body['ticket'] || '')
+  const code = String(body['code'] || '').trim()
+
+  const db = drizzle(c.env.DB, { schema })
+  
+  // Clean up expired tickets
+  const now = Date.now()
+  c.executionCtx.waitUntil(
+    db.delete(schema.tgLoginTickets).where(sql`${schema.tgLoginTickets.expires_at} < ${now}`)
+  )
+
+  const record = await db.select().from(schema.tgLoginTickets).where(eq(schema.tgLoginTickets.ticket, ticket)).get()
+  
+  if (!record || record.expires_at.getTime() < now) {
+    return c.redirect(`/admin/login?ticket=${encodeURIComponent(ticket)}&error=Verification+code+expired.+Please+generate+a+new+link+from+the+bot.`)
+  }
+
+  if (!timingSafeEqual(record.code, code)) {
+    return c.redirect(`/admin/login?ticket=${encodeURIComponent(ticket)}&error=Invalid+verification+code.`)
+  }
+
+  // Auth successful! Delete the temporary ticket
+  await db.delete(schema.tgLoginTickets).where(eq(schema.tgLoginTickets.ticket, ticket))
+
+  // Create persistent session
+  const token = crypto.randomUUID().replace(/-/g, '')
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 1 day session for OTP login
+
+  await db.insert(schema.adminSessions).values({
+    token,
+    user_id: record.user_id,
+    expires_at: expiresAt,
+  })
+
+  // Clean up expired sessions for this user (fire-and-forget)
+  c.executionCtx.waitUntil(
+    db.delete(schema.adminSessions)
+      .where(and(
+        eq(schema.adminSessions.user_id, record.user_id),
+        sql`${schema.adminSessions.expires_at} < ${Date.now()}`
+      ))
+  )
+
+  setCookie(c, 'admin_token', token, {
+    path: '/',
+    secure: true,
+    httpOnly: true,
+    sameSite: 'Lax',
+    maxAge: 24 * 60 * 60,
+  })
+
+  return c.redirect('/admin')
 })
 
 adminApp.post('/login', async (c) => {

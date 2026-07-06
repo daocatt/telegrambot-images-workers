@@ -50,6 +50,13 @@
       "when": 1783371130130,
       "tag": "0006_free_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1783374126715,
+      "tag": "0007_great_titania",
+      "breakpoints": true
     }
   ]
 }
