@@ -113,10 +113,9 @@ const Layout = (props: { title: string; isAdmin?: boolean; isSuperAdmin?: boolea
   )
 }
 
-// 1. Auth + CSRF Middleware
 adminApp.use('*', async (c, next) => {
   const path = c.req.path
-  if (path.endsWith('/login') || path.endsWith('/logout') || path.includes('/send-code') || path.includes('/verify-code')) {
+  if (path.endsWith('/login') || path.endsWith('/login-ticket') || path.endsWith('/logout') || path.includes('/send-code') || path.includes('/verify-code')) {
     return next()
   }
 
