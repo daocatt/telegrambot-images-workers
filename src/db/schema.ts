@@ -12,6 +12,8 @@ export const users = sqliteTable('users', {
   email_verified: integer('email_verified', { mode: 'boolean' }).default(false).notNull(),
 }, (table) => ({
   emailIdx: uniqueIndex('users_email_idx').on(table.email),
+  isAdminIdx: index('users_is_admin_idx').on(table.is_admin),
+  statusIdx: index('users_status_idx').on(table.status),
 }));
 
 // Images table
@@ -32,6 +34,8 @@ export const images = sqliteTable('images', {
   uploaderIdx: index('images_uploader_idx').on(table.uploader_id),
   groupIdx: index('images_group_idx').on(table.group_id),
   createdAtIdx: index('images_created_at_idx').on(table.created_at),
+  tgFileIdIdx: index('images_tg_file_id_idx').on(table.tg_file_id),
+  uploaderCreatedIdx: index('images_uploader_created_idx').on(table.uploader_id, table.created_at),
 }));
 
 export const groups = sqliteTable('groups', {
@@ -55,7 +59,9 @@ export const adminSessions = sqliteTable('admin_sessions', {
     .notNull()
     .references(() => users.tg_id, { onDelete: 'cascade' }),
   expires_at: integer('expires_at', { mode: 'timestamp' }).notNull(),
-});
+}, (table) => ({
+  userIdx: index('admin_sessions_user_id_idx').on(table.user_id),
+}));
 
 // EmailVerifications table
 export const emailVerifications = sqliteTable('email_verifications', {

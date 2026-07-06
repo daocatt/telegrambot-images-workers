@@ -14,6 +14,13 @@ export interface EnvBindings {
   WEBHOOK_URL?: string; // Optional custom webhook URL
   ENABLE_GALLERY?: string; // "true" | "false"
   ENABLE_PUBLIC_CHECK?: string; // "true" | "false"
+  SUPER_ADMIN_TG_ID?: string; // Super admin telegram ID
+  RESEND_API_KEY?: string;
+  SENDER_EMAIL?: string;
+  SENDER_NAME?: string;
+  EMAIL?: any;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
 }
 
 // Extend Grammy's default Context

@@ -2,6 +2,18 @@ import { getDb } from './db/client';
 import { emailVerifications, users } from './db/schema';
 import { eq } from 'drizzle-orm';
 
+export function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  let result = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    result |= bufA[i] ^ bufB[i];
+  }
+  return result === 0;
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -65,7 +77,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   
   const currentHashHex = Array.from(new Uint8Array(derivedBits)).map(b => b.toString(16).padStart(2, '0')).join('');
   
-  return currentHashHex === hashHex;
+  return timingSafeEqual(currentHashHex, hashHex);
 }
 
 export async function sendEmailVerificationCode(
@@ -195,8 +207,8 @@ export async function verifyEmailCode(
     .get();
 
   if (!record) return false;
-  if (record.code !== code) return false;
   if (new Date(record.expires_at).getTime() < Date.now()) return false;
+  if (!timingSafeEqual(record.code, code)) return false;
 
   // Cleanup code after successful verification
   await db.delete(emailVerifications).where(eq(emailVerifications.email, email));
