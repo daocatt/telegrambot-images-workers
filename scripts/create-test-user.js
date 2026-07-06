@@ -36,6 +36,13 @@ try {
   console.log(`\n🚣 Inserting into pot local D1 database...`);
   execSync(`npx wrangler d1 execute telegrambot_images_pot --local --command "${sql}" --env pot`, { stdio: 'inherit' });
 } catch (e) {
-  console.error(`❌ Failed to insert into pot database:`, e.message);
+  console.warn(`⚠️ Failed to insert into pot database:`, e.message);
+}
+
+try {
+  console.log(`\n🚣 Inserting into default local D1 database...`);
+  execSync(`npx wrangler d1 execute telegrambot_images_pot --local --command "${sql}"`, { stdio: 'inherit' });
+} catch (e) {
+  console.error(`❌ Failed to insert into default database:`, e.message);
 }
 
