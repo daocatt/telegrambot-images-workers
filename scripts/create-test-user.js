@@ -25,23 +25,25 @@ console.log(`Email: ${email}`);
 console.log(`Password: ${password}`);
 console.log(`SQL: ${sql}`);
 
+const escapedSql = sql.replace(/\$/g, '\\$');
+
 try {
   console.log(`\n🚣 Inserting into snapflare local D1 database...`);
-  execSync(`npx wrangler d1 execute telegrambot_images_db --local --command "${sql}" --env snapflare`, { stdio: 'inherit' });
+  execSync(`npx wrangler d1 execute telegrambot_images_db --local --command "${escapedSql}" --env snapflare`, { stdio: 'inherit' });
 } catch (e) {
   console.warn(`⚠️ Failed to insert into snapflare database:`, e.message);
 }
 
 try {
   console.log(`\n🚣 Inserting into pot local D1 database...`);
-  execSync(`npx wrangler d1 execute telegrambot_images_pot --local --command "${sql}" --env pot`, { stdio: 'inherit' });
+  execSync(`npx wrangler d1 execute telegrambot_images_pot --local --command "${escapedSql}" --env pot`, { stdio: 'inherit' });
 } catch (e) {
   console.warn(`⚠️ Failed to insert into pot database:`, e.message);
 }
 
 try {
   console.log(`\n🚣 Inserting into default local D1 database...`);
-  execSync(`npx wrangler d1 execute telegrambot_images_pot --local --command "${sql}"`, { stdio: 'inherit' });
+  execSync(`npx wrangler d1 execute telegrambot_images_pot --local --command "${escapedSql}"`, { stdio: 'inherit' });
 } catch (e) {
   console.error(`❌ Failed to insert into default database:`, e.message);
 }
