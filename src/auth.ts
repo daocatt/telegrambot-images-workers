@@ -120,6 +120,7 @@ export async function sendEmailVerificationCode(
 
   if (env.RESEND_API_KEY) {
     try {
+      const senderName = env.SENDER_NAME || 'Telegram Image Host';
       const resendResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -127,7 +128,7 @@ export async function sendEmailVerificationCode(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: `Telegram Image Host <${fromEmail}>`,
+          from: `${senderName} <${fromEmail}>`,
           to: [email],
           subject: subject,
           html: htmlContent,
@@ -149,9 +150,10 @@ export async function sendEmailVerificationCode(
   // Try to send via CF Email Sending if Resend was not used
   if (!sent && env.EMAIL) {
     try {
+      const senderName = env.SENDER_NAME || "Telegram Image Host Auth";
       await env.EMAIL.send({
         to: email,
-        from: { email: fromEmail, name: "Telegram Image Host Auth" },
+        from: { email: fromEmail, name: senderName },
         subject,
         html: htmlContent,
         text: bodyText,
