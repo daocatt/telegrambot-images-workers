@@ -43,6 +43,7 @@ type Bindings = {
   WEBHOOK_URL?: string;
   ENABLE_PUBLIC_CHECK?: string; // "true" or "false"
   ENABLE_GALLERY?: string;
+  TELEGRAM_BOT_NAME?: string;
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -62,7 +63,215 @@ app.use('*', async (c, next) => {
 app.route('/admin', adminApp)
 
 app.get('/', (c) => {
-  return c.text('Telegram Bot Image Manager API is running.')
+  const botName = c.env.TELEGRAM_BOT_NAME || '@snapflare_bot'
+  const botUsername = botName.startsWith('@') ? botName.slice(1) : botName
+  const botLink = `https://t.me/${botUsername}`
+
+  const backgrounds = [
+    'https://images.unsplash.com/photo-1508193638397-1c4234db14d8?q=80&w=1600&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1528164344705-47542687000d?q=80&w=1600&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1548013146-72479768bbf4?q=80&w=1600&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1523731407965-2430cd12f5e4?q=80&w=1600&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1504609773096-104ff2c73ba4?q=80&w=1600&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?q=80&w=1600&auto=format&fit=crop'
+  ]
+  const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)]
+
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Image Host - Telegram Bot Service</title>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+        <style>
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+          }
+          .bg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('${randomBg}');
+            background-size: cover;
+            background-position: center;
+            filter: brightness(0.4) contrast(1.1);
+            z-index: 1;
+            transition: filter 0.5s ease;
+          }
+          .container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 480px;
+            padding: 2.5rem;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.125);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+          @keyframes slideUp {
+            from {
+              opacity: 0;
+              transform: translateY(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          .logo-wrapper {
+            margin-bottom: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(56, 189, 248, 0.3);
+          }
+          .logo-icon {
+            width: 36px;
+            height: 36px;
+            fill: #ffffff;
+          }
+          h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #e2e8f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+          }
+          .subtitle {
+            font-size: 1rem;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            font-weight: 400;
+          }
+          .info-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.25rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+            text-align: left;
+          }
+          .info-box p {
+            margin-bottom: 0.5rem;
+          }
+          .info-box p:last-child {
+            margin-bottom: 0;
+          }
+          .bullet {
+            color: #38bdf8;
+            margin-right: 6px;
+            font-weight: bold;
+          }
+          .btn-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 1rem;
+            background: #22c55e;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 1.05rem;
+            text-decoration: none;
+            border-radius: 14px;
+            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            margin-bottom: 1.25rem;
+            border: none;
+            cursor: pointer;
+          }
+          .btn-cta:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5);
+          }
+          .btn-cta:active {
+            transform: translateY(0);
+          }
+          .btn-cta svg {
+            margin-right: 8px;
+            width: 20px;
+            height: 20px;
+          }
+          .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            font-size: 0.85rem;
+            color: #64748b;
+          }
+          .footer-links a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s ease;
+          }
+          .footer-links a:hover {
+            color: #38bdf8;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="bg-overlay"></div>
+        <div class="container">
+          <div class="logo-wrapper">
+            <svg class="logo-icon" viewBox="0 0 24 24">
+              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0-2-.9-2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+            </svg>
+          </div>
+          <h1>Image Manager</h1>
+          <div class="subtitle">Telegram 智能图床服务</div>
+          
+          <div class="info-box">
+            <p><span class="bullet">✦</span> 关注 Telegram 机器人即可开始使用</p>
+            <p><span class="bullet">✦</span> 发送图片至 Bot 即可立即生成高速外链</p>
+            <p><span class="bullet">✦</span> 自动接入 D1 与 CDN，享受极速访问体验</p>
+          </div>
+
+          <a href="${botLink}" target="_blank" rel="noopener noreferrer" class="btn-cta">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.97.53-1.33.52-.4-.01-1.17-.23-1.74-.41-.7-.23-1.26-.35-1.21-.74.03-.2.3-.41.82-.62 3.18-1.38 5.3-2.29 6.36-2.73 3.02-1.26 3.65-1.48 4.06-1.49.09 0 .29.02.42.13.11.09.14.21.15.3-.01.08-.01.17-.02.2z"/>
+            </svg>
+            关注 ${botName}
+          </a>
+
+          <div class="footer-links">
+            <a href="/admin">管理后台 (Admin Console)</a>
+          </div>
+        </div>
+      </body>
+    </html>
+  `)
 })
 
 // Webhook Route
