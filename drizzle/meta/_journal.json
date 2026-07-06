@@ -43,6 +43,13 @@
       "when": 1783369995461,
       "tag": "0005_glorious_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1783371130130,
+      "tag": "0006_free_gladiator",
+      "breakpoints": true
     }
   ]
 }

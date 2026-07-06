@@ -68,5 +68,8 @@ export const emailVerifications = sqliteTable('email_verifications', {
   email: text('email').primaryKey(),
   code: text('code').notNull(),
   expires_at: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  send_count: integer('send_count').default(1).notNull(),       // requests sent today
+  last_sent_at: integer('last_sent_at', { mode: 'timestamp' }), // timestamp of last send
+  day_reset_at: integer('day_reset_at', { mode: 'timestamp' }), // midnight UTC of current day window
 });
 

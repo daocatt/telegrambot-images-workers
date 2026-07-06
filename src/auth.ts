@@ -85,25 +85,67 @@ export async function sendEmailVerificationCode(
   tgId: string,
   env: any
 ): Promise<string> {
+  const db = getDb(env.DB);
+  const now = Date.now();
+
+  // --- Rate limiting: check existing record ---
+  const existing = await db
+    .select()
+    .from(emailVerifications)
+    .where(eq(emailVerifications.email, email))
+    .get();
+
+  if (existing) {
+    // 60-second cooldown between sends
+    if (existing.last_sent_at && now - new Date(existing.last_sent_at).getTime() < 60_000) {
+      const remaining = Math.ceil((60_000 - (now - new Date(existing.last_sent_at).getTime())) / 1000);
+      throw new Error(`Please wait ${remaining} seconds before requesting another code.`);
+    }
+
+    // Daily limit: 10 requests per email per UTC day
+    const todayMidnightUTC = new Date();
+    todayMidnightUTC.setUTCHours(0, 0, 0, 0);
+
+    const isNewDay = !existing.day_reset_at ||
+      new Date(existing.day_reset_at).getTime() < todayMidnightUTC.getTime();
+
+    if (!isNewDay && existing.send_count >= 10) {
+      throw new Error('Daily verification code limit reached (10/day). Please try again tomorrow.');
+    }
+  }
+
   // Generate 6-digit code
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const db = getDb(env.DB);
-  
-  // Set expiry in 15 minutes
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-  
+  const expiresAt = new Date(now + 15 * 60 * 1000); // expires in 15 minutes
+  const lastSentAt = new Date(now);
+
+  // Calculate today's UTC midnight for the daily window
+  const todayMidnightUTC = new Date();
+  todayMidnightUTC.setUTCHours(0, 0, 0, 0);
+
+  // Determine new send_count
+  const isNewDay = !existing?.day_reset_at ||
+    new Date(existing.day_reset_at).getTime() < todayMidnightUTC.getTime();
+  const newSendCount = isNewDay ? 1 : (existing?.send_count ?? 0) + 1;
+
   await db
     .insert(emailVerifications)
     .values({
       email,
       code,
       expires_at: expiresAt,
+      send_count: newSendCount,
+      last_sent_at: lastSentAt,
+      day_reset_at: todayMidnightUTC,
     })
     .onConflictDoUpdate({
       target: emailVerifications.email,
       set: {
         code,
         expires_at: expiresAt,
+        send_count: newSendCount,
+        last_sent_at: lastSentAt,
+        day_reset_at: todayMidnightUTC,
       },
     });
 

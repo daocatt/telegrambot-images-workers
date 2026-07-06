@@ -314,6 +314,15 @@ adminApp.post('/login', async (c) => {
     expires_at: expiresAt,
   })
 
+  // Clean up expired sessions for this user (fire-and-forget)
+  c.executionCtx.waitUntil(
+    db.delete(schema.adminSessions)
+      .where(and(
+        eq(schema.adminSessions.user_id, user.tg_id),
+        sql`${schema.adminSessions.expires_at} < ${Date.now()}`
+      ))
+  )
+
   setCookie(c, 'admin_token', token, {
     path: '/',
     secure: true,
