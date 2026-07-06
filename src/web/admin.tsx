@@ -1360,17 +1360,21 @@ adminApp.get('/profile', async (c) => {
 
             {/* Password Modification Form */}
             <form action="/admin/profile/change-password" method="post" class="space-y-4 border-t border-black pt-4">
-              <h3 class="text-sm font-black uppercase tracking-wider">Change Password</h3>
-              <div>
-                <label class="block text-xs font-bold uppercase mb-1">Current Password</label>
-                <input type="password" name="current_password" required placeholder="••••••••" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0" />
-              </div>
+              <h3 class="text-sm font-black uppercase tracking-wider">
+                {user?.password_hash ? 'Change Password' : 'Set Password'}
+              </h3>
+              {user?.password_hash && (
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1">Current Password</label>
+                  <input type="password" name="current_password" required placeholder="••••••••" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                </div>
+              )}
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
                 <input type="password" name="new_password" required placeholder="••••••••" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0" />
               </div>
               <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase hover:bg-zinc-800 rounded-none border border-black">
-                Update Password
+                {user?.password_hash ? 'Update Password' : 'Set Password'}
               </button>
             </form>
           </div>
