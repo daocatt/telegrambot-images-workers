@@ -84,7 +84,6 @@ app.get('/', (c) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Image Host - Telegram Bot Service</title>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
         <style>
           * {
             box-sizing: border-box;
@@ -92,9 +91,9 @@ app.get('/', (c) => {
             padding: 0;
           }
           body {
-            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #ffffff;
+            font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans CN", monospace;
+            background: #f3f4f6;
+            color: #000000;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -111,7 +110,7 @@ app.get('/', (c) => {
             background-image: url('${randomBg}');
             background-size: cover;
             background-position: center;
-            filter: brightness(0.4) contrast(1.1);
+            filter: brightness(0.6) contrast(1.05);
             z-index: 1;
             transition: filter 0.5s ease;
           }
@@ -119,21 +118,20 @@ app.get('/', (c) => {
             position: relative;
             z-index: 10;
             width: 90%;
-            max-width: 480px;
-            padding: 2.5rem;
-            background: rgba(15, 23, 42, 0.45);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.125);
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            max-width: 460px;
+            padding: 2.5rem 2rem;
+            background: #ffffff;
+            color: #000000;
+            border: 3px solid #000000;
+            border-radius: 0;
+            box-shadow: 8px 8px 0px #000000;
             text-align: center;
-            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           }
           @keyframes slideUp {
             from {
               opacity: 0;
-              transform: translateY(30px);
+              transform: translateY(20px);
             }
             to {
               opacity: 1;
@@ -145,53 +143,55 @@ app.get('/', (c) => {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 72px;
-            height: 72px;
-            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-            border-radius: 20px;
-            box-shadow: 0 8px 24px rgba(56, 189, 248, 0.3);
+            width: 64px;
+            height: 64px;
+            background: #000000;
+            border: 2px solid #000000;
+            border-radius: 0;
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.15);
           }
           .logo-icon {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             fill: #ffffff;
           }
           h1 {
-            font-size: 2rem;
-            font-weight: 800;
+            font-size: 1.75rem;
+            font-weight: 900;
             margin-bottom: 0.5rem;
             letter-spacing: -0.5px;
-            background: linear-gradient(to right, #ffffff, #e2e8f0);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
           }
           .subtitle {
-            font-size: 1rem;
-            color: #94a3b8;
+            font-size: 0.95rem;
+            color: #4b5563;
             margin-bottom: 2rem;
-            font-weight: 400;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
           }
           .info-box {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 1.25rem;
-            border-radius: 16px;
+            background: #f9fafb;
+            border: 1px solid #000000;
+            padding: 1.25rem 1rem;
+            border-radius: 0;
             margin-bottom: 2rem;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             line-height: 1.6;
-            color: #cbd5e1;
+            color: #000000;
             text-align: left;
           }
           .info-box p {
             margin-bottom: 0.5rem;
+            font-weight: 500;
           }
           .info-box p:last-child {
             margin-bottom: 0;
           }
           .bullet {
-            color: #38bdf8;
+            color: #000000;
             margin-right: 6px;
-            font-weight: bold;
+            font-weight: 900;
           }
           .btn-cta {
             display: inline-flex;
@@ -199,25 +199,28 @@ app.get('/', (c) => {
             justify-content: center;
             width: 100%;
             padding: 1rem;
-            background: #22c55e;
+            background: #000000;
             color: #ffffff;
-            font-weight: 600;
-            font-size: 1.05rem;
+            font-weight: 800;
+            font-size: 1rem;
             text-decoration: none;
-            border-radius: 14px;
-            box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 0;
+            border: 2px solid #000000;
+            box-shadow: 4px 4px 0px #000000;
+            transition: all 0.2s ease;
             margin-bottom: 1.25rem;
-            border: none;
             cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
           }
           .btn-cta:hover {
-            background: #16a34a;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5);
+            background: #1f2937;
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px #000000;
           }
           .btn-cta:active {
-            transform: translateY(0);
+            transform: translate(0, 0);
+            box-shadow: 2px 2px 0px #000000;
           }
           .btn-cta svg {
             margin-right: 8px;
@@ -229,15 +232,15 @@ app.get('/', (c) => {
             justify-content: center;
             gap: 1.5rem;
             font-size: 0.85rem;
-            color: #64748b;
           }
           .footer-links a {
-            color: #94a3b8;
-            text-decoration: none;
-            transition: color 0.2s ease;
+            color: #000000;
+            text-decoration: underline;
+            font-weight: bold;
+            transition: opacity 0.2s ease;
           }
           .footer-links a:hover {
-            color: #38bdf8;
+            opacity: 0.8;
           }
         </style>
       </head>
@@ -249,13 +252,13 @@ app.get('/', (c) => {
               <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0-2-.9-2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
             </svg>
           </div>
-          <h1>Image Manager</h1>
+          <h1>📷 SnapFlare</h1>
           <div class="subtitle">Telegram 智能图床服务</div>
           
           <div class="info-box">
-            <p><span class="bullet">✦</span> 关注 Telegram 机器人即可开始使用</p>
-            <p><span class="bullet">✦</span> 发送图片至 Bot 即可立即生成高速外链</p>
-            <p><span class="bullet">✦</span> 自动接入 D1 与 CDN，享受极速访问体验</p>
+            <p><span class="bullet">■</span> 关注 Telegram 机器人即可开始使用</p>
+            <p><span class="bullet">■</span> 发送图片至 Bot 即可立即生成高速外链</p>
+            <p><span class="bullet">■</span> 自动接入 D1 与 CDN，享受极速访问体验</p>
           </div>
 
           <a href="${botLink}" target="_blank" rel="noopener noreferrer" class="btn-cta">
