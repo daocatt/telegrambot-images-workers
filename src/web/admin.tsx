@@ -81,8 +81,7 @@ const Layout = (props: { title: string; isAdmin?: boolean; showGallery?: boolean
         <header class="bg-white border-b border-black sticky top-0 z-30">
           <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-2">
             <h1 class="text-lg md:text-xl font-black uppercase tracking-wider text-black">
-              <span class="hidden md:inline">📷 Telegram Image Manager</span>
-              <span class="md:hidden">📷 Img Manager</span>
+              📷 SnapFlare
             </h1>
             <nav class="flex items-center space-x-3 md:space-x-4 overflow-x-auto no-scrollbar py-1">
               <a href="/admin" class="text-black hover:bg-black hover:text-white px-2 py-1 text-sm font-bold border border-transparent hover:border-black transition whitespace-nowrap">Images</a>
@@ -450,6 +449,7 @@ adminApp.get('/', async (c) => {
   // Pagination & Search params
   const page = parseInt(c.req.query('page') || '1')
   const search = c.req.query('q') || ''
+  const error = c.req.query('error') || ''
   const safeSearch = search.replace(/[%_]/g, '\\$&')
   const pageSize = 20
   const offset = (page - 1) * pageSize
@@ -518,15 +518,23 @@ adminApp.get('/', async (c) => {
       {html`<!DOCTYPE html>`}
       <Layout title="Images Dashboard" isAdmin={isAdmin} showGallery={isGalleryEnabled}>
         <div x-data="dashboard" class="relative">
+          {error && (
+            <div class="bg-gray-100 border-l-4 border-red-600 p-4 mb-6 text-sm font-bold text-red-600 rounded-none">
+              {escapeHtml(error)}
+            </div>
+          )}
           <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 border-b border-black pb-6">
 
             <div class="flex flex-col gap-1">
               <div class="flex items-center gap-4">
                 <h2 class="text-xl font-bold uppercase tracking-wider">
-                  {activeGroup ? `Gallery: ${activeGroup.name}` : 'Uploaded Images'} ({total})
+                  {activeGroup ? `Gallery: ${activeGroup.name}` : 'Uploaded'} ({total})
                 </h2>
                 <button x-on:click="toggleAll()" class="text-xs bg-white border border-black px-2 py-1 hover:bg-black hover:text-white transition shadow-sm font-medium rounded-none">
                    <span x-text="selected.length === 0 ? 'Select All' : 'Deselect All'">Select All</span>
+                </button>
+                <button onclick="document.getElementById('uploadModal').showModal()" class="text-xs bg-black border border-black text-white px-2.5 py-1 hover:bg-zinc-800 transition shadow-sm font-bold rounded-none uppercase">
+                   + Upload
                 </button>
               </div>
               {activeGroup && (
@@ -714,6 +722,27 @@ adminApp.get('/', async (c) => {
               )}
             </div>
           )}
+          
+          {/* Upload Modal */}
+          <dialog id="uploadModal" class="p-0 border-2 border-black shadow-2xl backdrop:bg-black/50 open:flex flex-col max-w-sm w-full rounded-none">
+            <div class="bg-white p-6 rounded-none">
+              <h3 class="text-lg font-black uppercase mb-4 tracking-wider">Upload New Image</h3>
+              <form action="/admin/upload" method="post" enctype="multipart/form-data" class="space-y-4">
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1">Select File</label>
+                  <input type="file" name="file" accept="image/*" required class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1">Caption (Optional)</label>
+                  <input type="text" name="caption" placeholder="My vacation photo" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                </div>
+                <div class="flex justify-end gap-3 mt-6 border-t border-black pt-4">
+                   <button type="button" onclick="document.getElementById('uploadModal').close()" class="px-4 py-2 text-sm text-black border border-black hover:bg-gray-100 rounded-none uppercase font-bold">Cancel</button>
+                   <button type="submit" class="px-4 py-2 text-sm bg-black text-white hover:bg-zinc-800 rounded-none uppercase font-bold border border-black">Upload</button>
+                </div>
+              </form>
+            </div>
+          </dialog>
         </div>
       </Layout>
     </>
@@ -1163,15 +1192,17 @@ adminApp.get('/profile', async (c) => {
               </div>
             </form>
 
-            <form action="/admin/profile/verify-email" method="post" class="space-y-4 border-t border-black pt-4">
+            <form action="/admin/profile/verify-email" method="post" class="space-y-4 pt-2">
               <h3 class="text-sm font-black uppercase tracking-wider">Verify Verification Code</h3>
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
-                <input type="text" name="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0" />
+                <div class="flex gap-2">
+                  <input type="text" name="code" required placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
+                  <button type="submit" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
+                    Verify Code
+                  </button>
+                </div>
               </div>
-              <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase hover:bg-zinc-800 rounded-none border border-black">
-                Verify Email Code
-              </button>
             </form>
 
             {/* Password Modification Form */}
@@ -1282,6 +1313,64 @@ adminApp.post('/profile/change-password', async (c) => {
   }).where(eq(schema.users.tg_id, userId))
 
   return c.redirect('/admin/profile?success=Password+updated+successfully')
+})
+
+// Web Image Upload
+adminApp.post('/upload', async (c) => {
+  const db = drizzle(c.env.DB, { schema })
+  const userId = c.get('userId')
+  
+  const body = await c.req.parseBody()
+  const file = body['file'] as File
+  const caption = String(body['caption'] || '').trim()
+
+  if (!file || file.size === 0) {
+    return c.redirect('/admin?error=No+file+uploaded')
+  }
+
+  try {
+    // 1. Prepare FormData to send to Telegram Bot sendPhoto API
+    const formData = new FormData()
+    formData.append('chat_id', c.env.CHANNEL_ID)
+    formData.append('photo', file)
+    if (caption) {
+      formData.append('caption', caption)
+    }
+
+    const tgRes = await fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      body: formData
+    })
+
+    const tgData = await tgRes.json() as any
+    if (!tgRes.ok || !tgData.ok) {
+      console.error('Telegram upload failed:', tgData)
+      return c.redirect(`/admin?error=Telegram+upload+failed:+${encodeURIComponent(tgData.description || 'Unknown error')}`)
+    }
+
+    // 2. Extract tg_file_id and channel_msg_id
+    const messageId = tgData.result.message_id
+    const photoArray = tgData.result.photo
+    const bestPhoto = photoArray[photoArray.length - 1]
+    const tgFileId = bestPhoto.file_id
+
+    // 3. Save info to D1 Database
+    const id = nanoid(8)
+    await db.insert(schema.images).values({
+      id,
+      tg_file_id: tgFileId,
+      channel_msg_id: messageId,
+      uploader_id: userId,
+      is_public: true,
+      caption: caption || null,
+      created_at: new Date()
+    })
+
+    return c.redirect('/admin')
+  } catch (err: any) {
+    console.error('Web upload error:', err)
+    return c.redirect(`/admin?error=Upload+error:+${encodeURIComponent(err.message)}`)
+  }
 })
 
 export default adminApp
