@@ -4,10 +4,18 @@ import { cors } from 'hono/cors'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from '../db/schema'
-import { eq, desc, asc, and, like, count, sql, inArray } from 'drizzle-orm'
+import { eq, desc, and, like, count, sql, inArray } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { EnvBindings } from '../bot/context'
 import { hashPassword, verifyPassword, sendEmailVerificationCode, verifyEmailCode } from '../auth'
+
+function maskEmail(email: string): string {
+  if (!email) return 'Not Setup';
+  const [local, domain] = email.split('@');
+  if (!domain) return email;
+  const masked = local.length <= 2 ? local[0] + '***' : local[0] + '***' + local.slice(-1);
+  return masked + '@' + domain;
+}
 
 function escapeHtml(text: string): string {
   return text
@@ -162,9 +170,11 @@ adminApp.use('*', async (c, next) => {
   c.set('userId', session.user_id)
   c.set('isAdmin', user.is_admin)
 
-  // Find super admin (oldest active admin user)
-  const superAdmin = await db.select().from(schema.users).where(eq(schema.users.is_admin, true)).orderBy(asc(schema.users.created_at)).limit(1).get()
-  c.set('isSuperAdmin', superAdmin ? user.tg_id === superAdmin.tg_id : false)
+  const superAdminTgId = c.env.SUPER_ADMIN_TG_ID
+  const isSuperAdmin = superAdminTgId
+    ? user.tg_id === superAdminTgId
+    : user.is_admin
+  c.set('isSuperAdmin', isSuperAdmin)
 
   // Redirect to setup credentials if not completed
   if (!user.email || !user.password_hash) {
@@ -204,6 +214,9 @@ adminApp.get('/login', async (c) => {
       <head>
         <title>Login - Telegram Admin</title>
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        {c.env.TURNSTILE_SITE_KEY && (
+          <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        )}
       </head>
       <body class="flex items-center justify-center min-h-screen bg-gray-100 font-mono text-black">
         <div class="p-8 bg-white border-2 border-black max-w-sm w-full rounded-none">
@@ -228,6 +241,9 @@ adminApp.get('/login', async (c) => {
                 </button>
               </div>
             </div>
+            {c.env.TURNSTILE_SITE_KEY && (
+              <div class="cf-turnstile" data-sitekey={c.env.TURNSTILE_SITE_KEY} data-theme="light"></div>
+            )}
             <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase tracking-wider hover:bg-zinc-800 transition rounded-none border border-black">
               Sign In
             </button>
@@ -252,11 +268,35 @@ adminApp.post('/login', async (c) => {
     return c.redirect('/admin/login?error=Invalid+credentials')
   }
 
+  if (c.env.TURNSTILE_SECRET_KEY) {
+    const turnstileToken = String(body['cf-turnstile-response'] || '')
+    if (!turnstileToken) {
+      return c.redirect('/admin/login?error=Captcha+verification+required')
+    }
+    try {
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secret: c.env.TURNSTILE_SECRET_KEY,
+          response: turnstileToken,
+        }),
+      })
+      const verifyData = await verifyRes.json() as any
+      if (!verifyData.success) {
+        return c.redirect('/admin/login?error=Captcha+verification+failed')
+      }
+    } catch (err) {
+      console.error('Turnstile verification error:', err)
+      return c.redirect('/admin/login?error=Captcha+verification+failed')
+    }
+  }
+
   const db = drizzle(c.env.DB, { schema })
   const user = await db.select().from(schema.users).where(eq(schema.users.email, email)).get()
 
   if (!user || !user.password_hash || user.status !== 'active') {
-    return c.redirect('/admin/login?error=Invalid+credentials+or+inactive+account')
+    return c.redirect('/admin/login?error=Invalid+credentials')
   }
 
   const matches = await verifyPassword(password, user.password_hash)
@@ -756,7 +796,7 @@ adminApp.get('/', async (c) => {
                     file: f,
                     name: f.name,
                     size: (f.size / 1024).toFixed(1) + ' KB',
-                    status: 'pending', // 'pending', 'uploading', 'success', 'error'
+                    status: 'pending',
                     progress: 0,
                     error: ''
                   });
@@ -777,6 +817,10 @@ adminApp.get('/', async (c) => {
                   item.status = 'uploading';
                   const formData = new FormData();
                   formData.append('file', item.file);
+                  const caption = document.getElementById('upload-caption')?.value?.trim();
+                  if (caption) formData.append('caption', caption);
+                  const groupId = document.getElementById('upload-gallery')?.value;
+                  if (groupId) formData.append('group_id', groupId);
                   
                   try {
                     const res = await fetch('/admin/upload-api', {
@@ -797,7 +841,6 @@ adminApp.get('/', async (c) => {
                 }
                 
                 this.isUploading = false;
-                // If at least one file succeeded, reload to refresh dashboard
                 if (this.files.some(f => f.status === 'success')) {
                   window.location.reload();
                 }
@@ -806,6 +849,24 @@ adminApp.get('/', async (c) => {
               <div class="flex justify-between items-center border-b border-black pb-2">
                 <h3 class="text-md font-black uppercase tracking-wider">Upload Images</h3>
                 <span class="text-xs text-gray-500 uppercase font-bold" x-text="files.length + '/10 files'"></span>
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-bold uppercase mb-1">Caption (optional)</label>
+                  <input type="text" id="upload-caption" placeholder="Add a caption..." class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                </div>
+                {isGalleryEnabled && userGroups.length > 0 && (
+                  <div>
+                    <label class="block text-xs font-bold uppercase mb-1">Gallery (optional)</label>
+                    <select id="upload-gallery" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none">
+                      <option value="">No Gallery</option>
+                      {userGroups.map(g => (
+                        <option value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               
               {/* Drag and Drop Zone */}
@@ -975,15 +1036,21 @@ adminApp.post('/image/:id/delete', async (c) => {
 
 // 5. Users Dashboard (Admins Only)
 adminApp.get('/users', async (c) => {
-  if (!c.get('isAdmin')) return c.text('Forbidden: Admins only', 403)
+  if (!c.get('isSuperAdmin')) return c.text('Forbidden: Super admin only', 403)
 
   const db = drizzle(c.env.DB, { schema })
   const usersList = await db.select().from(schema.users).orderBy(desc(schema.users.created_at)).all()
+  const error = c.req.query('error')
 
   return c.html(
     <>
       {html`<!DOCTYPE html>`}
-      <Layout title="Users Dashboard" isAdmin={true} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
+      <Layout title="Users Dashboard" isSuperAdmin={true} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
+        {error && (
+          <div class="bg-gray-100 border-l-4 border-red-600 p-4 mb-6 text-sm font-bold text-red-600 rounded-none">
+            {escapeHtml(error)}
+          </div>
+        )}
         <h2 class="text-xl font-bold uppercase tracking-wider mb-4">User Management</h2>
 
       <div class="bg-white border-2 border-black overflow-hidden rounded-none">
@@ -1003,7 +1070,7 @@ adminApp.get('/users', async (c) => {
               <tr>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold border-r border-black">{user.tg_id}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-black">{escapeHtml(user.nickname || '')}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-black">{escapeHtml(user.email || 'Not Setup')}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-black">{maskEmail(user.email || '')}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm border-r border-black">
                   {user.is_admin ? <span class="bg-black text-white px-2 py-0.5 text-xs font-bold uppercase rounded-none">Admin</span> : <span class="text-gray-500 uppercase text-xs">User</span>}
                 </td>
@@ -1013,13 +1080,17 @@ adminApp.get('/users', async (c) => {
                   {user.status === 'banned' && <span class="bg-red-600 text-white px-2 py-0.5 text-xs font-bold uppercase rounded-none">Banned</span>}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2 justify-end">
-                   <form action={`/admin/users/${user.tg_id}/status`} method="post">
-                      <select name="status" class="text-sm border border-black bg-white rounded-none p-1 mr-2 outline-none font-bold" onchange="this.form.submit()">
-                         <option value="active" selected={user.status === 'active'}>Active</option>
-                         <option value="pending" selected={user.status === 'pending'}>Pending</option>
-                         <option value="banned" selected={user.status === 'banned'}>Banned</option>
-                      </select>
-                   </form>
+                   {user.is_admin ? (
+                     <span class="text-xs text-gray-400 uppercase font-bold">Protected</span>
+                   ) : (
+                     <form action={`/admin/users/${user.tg_id}/status`} method="post">
+                        <select name="status" class="text-sm border border-black bg-white rounded-none p-1 mr-2 outline-none font-bold" onchange="this.form.submit()">
+                           <option value="active" selected={user.status === 'active'}>Active</option>
+                           <option value="pending" selected={user.status === 'pending'}>Pending</option>
+                           <option value="banned" selected={user.status === 'banned'}>Banned</option>
+                        </select>
+                     </form>
+                   )}
                 </td>
               </tr>
             ))}
@@ -1032,13 +1103,17 @@ adminApp.get('/users', async (c) => {
 })
 
 adminApp.post('/users/:id/status', async (c) => {
-  if (!c.get('isAdmin')) return c.text('Forbidden: Admins only', 403)
+  if (!c.get('isSuperAdmin')) return c.text('Forbidden: Super admin only', 403)
   const { id } = c.req.param()
+  const currentUserId = c.get('userId')
+  if (id === currentUserId) return c.redirect('/admin/users?error=Cannot+modify+your+own+status')
   const body = await c.req.parseBody()
   const status = body['status'] as string
   
   if (['active', 'pending', 'banned'].includes(status)) {
     const db = drizzle(c.env.DB, { schema })
+    const target = await db.select({ is_admin: schema.users.is_admin }).from(schema.users).where(eq(schema.users.tg_id, id)).get()
+    if (target?.is_admin) return c.redirect('/admin/users?error=Cannot+modify+admin+status')
     await db.update(schema.users).set({ status }).where(eq(schema.users.tg_id, id))
   }
   return c.redirect('/admin/users')
@@ -1132,10 +1207,10 @@ adminApp.get('/groups', async (c) => {
                   <span class="text-gray-600 italic">Layout</span>
                   <span class="font-bold uppercase text-black">{g.layout}</span>
                </div>
-               <div class="flex justify-between">
-                  <span class="text-gray-600 italic">Passcode</span>
-                  <span class="font-mono bg-white px-1.5 border border-black rounded-none">{g.passcode || 'None'}</span>
-               </div>
+                <div class="flex justify-between">
+                   <span class="text-gray-600 italic">Passcode</span>
+                   <span class="font-mono bg-white px-1.5 border border-black rounded-none">{g.passcode ? '••••••••' : 'None'}</span>
+                </div>
                <div class="flex justify-between items-center mt-2 border-t border-black pt-2">
                   <span class="text-gray-600 italic">Contents</span>
                   <a href={`/admin?gid=${g.id}`} class="text-black hover:underline font-bold text-xs flex items-center gap-1 uppercase">
@@ -1572,9 +1647,20 @@ adminApp.post('/upload-api', async (c) => {
   const body = await c.req.parseBody()
   const file = body['file'] as File
   const caption = String(body['caption'] || '').trim()
+  const groupId = body['group_id'] ? String(body['group_id']) : null
 
   if (!file || file.size === 0) {
     return c.json({ success: false, error: 'No file uploaded' }, 400)
+  }
+
+  const MAX_FILE_SIZE = 20 * 1024 * 1024
+  if (file.size > MAX_FILE_SIZE) {
+    return c.json({ success: false, error: 'File too large. Max 20MB.' }, 400)
+  }
+
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/svg+xml']
+  if (!allowedTypes.includes(file.type)) {
+    return c.json({ success: false, error: 'Invalid file type. Only images are allowed.' }, 400)
   }
 
   try {
@@ -1612,6 +1698,7 @@ adminApp.post('/upload-api', async (c) => {
       uploader_id: userId,
       is_public: true,
       caption: caption || null,
+      group_id: groupId,
       created_at: new Date()
     })
 

@@ -35,7 +35,17 @@ export function createBot(env: EnvBindings) {
   });
 
   bot.command('help', async (ctx) => {
-    await ctx.reply(`🚀 **Telegram Images Manager**\n\nA simple and powerful serverless image hosting solution powered by Cloudflare Workers and D1.\n\n🔗 **GitHub Repository:**\nhttps://github.com/daocatt/telegrambot-images-workers`, { parse_mode: 'Markdown' });
+    const adminCmds = ctx.isAdmin
+      ? `\n\n🛡 **Admin Commands:**\n/pending — List pending users\n/approve — Approve pending user\n/ban — Ban a user`
+      : '';
+    await ctx.reply(
+      `🚀 **SnapFlare — Telegram Image Host**\n\n` +
+      `📸 **User Commands:**\n/upload — Start uploading an image\n/me — View your profile\n/dashboard — Get web dashboard link\n\n` +
+      `💡 **Tip:** Just send me a photo directly to upload it!` +
+      adminCmds +
+      `\n\n🔗 https://github.com/daocatt/telegrambot-images-workers`,
+      { parse_mode: 'Markdown' }
+    );
   });
 
   bot.command('me', async (ctx) => {
@@ -91,26 +101,6 @@ export function createBot(env: EnvBindings) {
     }
   });
 
-  // Admin Commands (setadmin / deladmin)
-  bot.command('setadmin', async (ctx) => {
-    if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
-    // implementation
-    const args = ctx.match.split(' ');
-    if (args.length < 1) return ctx.reply('Usage: /setadmin <tg_id>');
-    const tg_id = args[0];
-    await ctx.db.update(users).set({ is_admin: true }).where(eq(users.tg_id, tg_id));
-    await ctx.reply(`✅ Added user ${tg_id} as an admin.`);
-  });
-
-  bot.command('deladmin', async (ctx) => {
-    if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
-    const args = ctx.match.split(' ');
-    if (args.length < 1 || !args[0]) return ctx.reply('Usage: /deladmin <tg_id>');
-    const tg_id = args[0];
-    await ctx.db.update(users).set({ is_admin: false }).where(eq(users.tg_id, tg_id));
-    await ctx.reply(`✅ Removed user ${tg_id} from admins.`);
-  });
-
   // User Management Commands (Admin Only)
   bot.command('pending', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
@@ -120,7 +110,7 @@ export function createBot(env: EnvBindings) {
         return ctx.reply('✅ No pending approval requests.');
       }
       const list = pendingUsers.map(u => `• ${u.nickname} (\`${u.tg_id}\`)`).join('\n');
-      await ctx.reply(`⏳ **Pending Users:**\n\n${list}\n\nUse \`/approve <ID>\` or \`/banned <ID>\``, { parse_mode: 'Markdown' });
+      await ctx.reply(`⏳ **Pending Users:**\n\n${list}\n\nUse \`/approve <ID>\` or \`/ban <ID>\``, { parse_mode: 'Markdown' });
     } catch (err) {
       await ctx.reply('❌ Failed to fetch pending users.');
     }
@@ -173,7 +163,7 @@ export function createBot(env: EnvBindings) {
     }
   });
 
-  bot.command('banned', async (ctx) => {
+  bot.command('ban', async (ctx) => {
     if (!ctx.isAdmin) return ctx.reply('⛔️ Admin only.');
     const tg_id = ctx.match.trim();
 
@@ -194,13 +184,15 @@ export function createBot(env: EnvBindings) {
           reply_markup: keyboard
         });
       } catch (err) {
-        return ctx.reply('❌ Failed to fetch active users. Usage: /banned <tg_id>');
+        return ctx.reply('❌ Failed to fetch active users. Usage: /ban <tg_id>');
       }
     }
 
     try {
       const target = await ctx.db.select().from(users).where(eq(users.tg_id, tg_id)).get();
       if (!target) return ctx.reply('❌ User not found.');
+
+      if (target.is_admin) return ctx.reply('⛔️ Cannot ban an admin.');
 
       await ctx.db.update(users).set({ status: 'banned' }).where(eq(users.tg_id, tg_id));
       await ctx.reply(`🚫 User \`${tg_id}\` (${target.nickname || 'Unknown'}) has been banned.`);
@@ -247,6 +239,11 @@ export function createBot(env: EnvBindings) {
       if (!target) {
         await ctx.editMessageText('❌ User not found.');
         return await ctx.answerCallbackQuery();
+      }
+
+      if (target.is_admin) {
+        await ctx.editMessageText('⛔️ Cannot ban an admin.');
+        return await ctx.answerCallbackQuery('Cannot ban admin');
       }
 
       if (target.status === 'banned') {

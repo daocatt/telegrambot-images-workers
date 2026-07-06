@@ -5,7 +5,7 @@ import { getCookie, setCookie } from 'hono/cookie'
 import { createBot } from './bot'
 import { drizzle } from 'drizzle-orm/d1'
 import * as schema from './db/schema'
-import { eq, count } from 'drizzle-orm'
+import { eq, count, sql } from 'drizzle-orm'
 import adminApp from './web/admin'
 
 function escapeHtml(text: string): string {
@@ -258,7 +258,7 @@ app.get('/g/:id', async (c) => {
   // 1. Passcode Check
   if (group.passcode) {
     const authCookie = getCookie(c, `gallery_auth_${id}`)
-    if (authCookie !== group.passcode) {
+    if (!authCookie || !timingSafeEqual(authCookie, group.passcode)) {
        const safeName = escapeHtml(group.name)
        return c.html(`
           <!DOCTYPE html>
@@ -287,7 +287,7 @@ app.get('/g/:id', async (c) => {
   }
 
   // 2. Fetch Images
-  const page = parseInt(c.req.query('page') || '1')
+  const page = Math.max(1, Math.min(parseInt(c.req.query('page') || '1') || 1, 1000))
   const pageSize = 24
   const offset = (page - 1) * pageSize
 
@@ -427,3 +427,22 @@ app.get('/setWebhook', async (c) => {
 })
 
 export default app
+
+export const scheduled: ExportedHandlerScheduledHandler = async (event, env, ctx) => {
+  const db = drizzle((env as any).DB, { schema })
+  const now = Date.now()
+
+  try {
+    await db.delete(schema.adminSessions).where(sql`${schema.adminSessions.expires_at} < ${now}`)
+    console.log('[Cron] Cleaned up expired sessions')
+  } catch (err) {
+    console.error('[Cron] Failed to cleanup sessions:', err)
+  }
+
+  try {
+    await db.delete(schema.emailVerifications).where(sql`${schema.emailVerifications.expires_at} < ${now}`)
+    console.log('[Cron] Cleaned up expired email verifications')
+  } catch (err) {
+    console.error('[Cron] Failed to cleanup email verifications:', err)
+  }
+}
