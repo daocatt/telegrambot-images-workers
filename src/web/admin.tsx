@@ -1116,16 +1116,19 @@ adminApp.get('/users', async (c) => {
                              <option value="banned" selected={user.status === 'banned'}>Banned</option>
                           </select>
                        </form>
-                       <button type="button" 
-                               onclick={`
-                                 document.getElementById('delete-user-nickname').textContent = ${JSON.stringify(user.nickname || '')};
-                                 document.getElementById('delete-user-tg-id').textContent = ${JSON.stringify(user.tg_id)};
-                                 document.getElementById('delete-user-form').action = '/admin/users/' + ${JSON.stringify(user.tg_id)} + '/delete';
-                                 document.getElementById('deleteUserModal').showModal();
-                               `}
-                               class="bg-red-600 text-white border border-black px-2 py-1 text-xs font-bold uppercase hover:bg-red-700 transition rounded-none cursor-pointer">
-                         Delete
-                       </button>
+                        <button type="button" 
+                                data-nickname={escapeHtml(user.nickname || '')}
+                                data-tg-id={user.tg_id}
+                                onclick={`
+                                  var btn = this;
+                                  document.getElementById('delete-user-nickname').textContent = btn.dataset.nickname;
+                                  document.getElementById('delete-user-tg-id').textContent = btn.dataset.tgId;
+                                  document.getElementById('delete-user-form').action = '/admin/users/' + btn.dataset.tgId + '/delete';
+                                  document.getElementById('deleteUserModal').showModal();
+                                `}
+                                class="bg-red-600 text-white border border-black px-2 py-1 text-xs font-bold uppercase hover:bg-red-700 transition rounded-none cursor-pointer">
+                          Delete
+                        </button>
                      </div>
                    )}
                 </td>
