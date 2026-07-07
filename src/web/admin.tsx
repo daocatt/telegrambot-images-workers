@@ -208,11 +208,11 @@ adminApp.get('/login', async (c) => {
               </div>
             )}
             
-            <form action="/admin/login-ticket" method="post" class="space-y-4">
+            <form action="/admin/login-ticket" method="post" autocomplete="off" class="space-y-4">
               <input type="hidden" name="ticket" value={ticket} />
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
-                <input type="text" name="code" required autocomplete="off" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
+                <input type="text" name="code" required autocomplete="one-time-code" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
               </div>
               <button type="submit" class="w-full bg-black text-white py-2 text-sm font-bold uppercase tracking-wider hover:bg-zinc-800 transition rounded-none border border-black cursor-pointer">
                 Confirm Login
@@ -248,12 +248,12 @@ adminApp.get('/login', async (c) => {
           <form action="/admin/login" method="post" class="space-y-4">
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Email Address</label>
-              <input type="email" name="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+              <input type="email" name="email" required autocomplete="username" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
             </div>
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Password</label>
               <div class="relative flex items-stretch">
-                <input type="password" id="login-password" name="password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                 <button type="button" onclick="const input = document.getElementById('login-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
                   👁️
                 </button>
@@ -429,7 +429,7 @@ adminApp.get('/setup-credentials', async (c) => {
         <title>Setup Credentials - Admin Console</title>
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script dangerouslySetInnerHTML={{ __html: `
-          document.addEventListener('DOMContentLoaded', () => {
+          function clearSetupInputs() {
             const email = document.getElementById('email');
             const code = document.getElementById('code');
             const password = document.getElementById('setup-password');
@@ -438,6 +438,10 @@ adminApp.get('/setup-credentials', async (c) => {
             if (code) code.value = '';
             if (password) password.value = '';
             if (codeContainer) codeContainer.style.display = 'none';
+          }
+          document.addEventListener('DOMContentLoaded', clearSetupInputs);
+          window.addEventListener('pageshow', (event) => {
+            if (event.persisted) clearSetupInputs();
           });
 
           async function sendVerificationCode() {
@@ -485,11 +489,11 @@ adminApp.get('/setup-credentials', async (c) => {
           <h2 class="text-xl font-black uppercase tracking-wider mb-2 text-center">Setup Credentials</h2>
           <p class="text-xs text-gray-500 mb-6 text-center">Link your Telegram account to an email and password for future direct web access.</p>
 
-          <div class="space-y-4">
+          <form autocomplete="off" onsubmit="return false;" class="space-y-4">
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Email Address</label>
               <div class="flex gap-2">
-                <input type="email" id="email" required autocomplete="off" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="email" id="email" required autocomplete="username" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                 <button type="button" onclick="sendVerificationCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                   Send Code
                 </button>
@@ -499,12 +503,12 @@ adminApp.get('/setup-credentials', async (c) => {
             <div id="code-container" style="display:none;" class="space-y-4">
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
-                <input type="text" id="code" required autocomplete="off" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
+                <input type="text" id="code" required autocomplete="one-time-code" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center tracking-[0.5em] font-bold focus:ring-0 focus:border-zinc-500" />
               </div>
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
                 <div class="relative flex items-stretch">
-                  <input type="password" id="setup-password" required autocomplete="off" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                  <input type="password" id="setup-password" required autocomplete="new-password" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                   <button type="button" onclick="const input = document.getElementById('setup-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
                     👁️
                   </button>
@@ -514,7 +518,7 @@ adminApp.get('/setup-credentials', async (c) => {
                 Verify & Save Credentials
               </button>
             </div>
-          </div>
+          </form>
         </div>
       </body>
     </html>
@@ -1575,7 +1579,7 @@ adminApp.get('/profile', async (c) => {
       {html`<!DOCTYPE html>`}
       <Layout title="Personal Center" isAdmin={user?.is_admin} isSuperAdmin={isSuperAdmin} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
         <script dangerouslySetInnerHTML={{ __html: `
-          document.addEventListener('DOMContentLoaded', () => {
+          function clearProfileInputs() {
             const email = document.getElementById('profile-email-input');
             const code = document.getElementById('profile-code-input');
             const nickname = document.getElementById('profile-nickname-input');
@@ -1586,6 +1590,10 @@ adminApp.get('/profile', async (c) => {
             if (nickname) nickname.value = '';
             if (currentPwd) currentPwd.value = '';
             if (newPwd) newPwd.value = '';
+          }
+          document.addEventListener('DOMContentLoaded', clearProfileInputs);
+          window.addEventListener('pageshow', (event) => {
+            if (event.persisted) clearProfileInputs();
           });
 
           async function sendProfileCode() {
@@ -1627,7 +1635,7 @@ adminApp.get('/profile', async (c) => {
             </div>
 
             {/* Nickname Modification Form */}
-            <form action="/admin/profile/change-nickname" method="post" class="space-y-4 border-t border-black pt-4">
+            <form action="/admin/profile/change-nickname" method="post" autocomplete="off" class="space-y-4 border-t border-black pt-4">
               <h3 class="text-sm font-black uppercase tracking-wider">Change Nickname</h3>
               <p class="text-xs text-gray-600">Min 4 characters, no special symbols.</p>
               <div>
@@ -1642,18 +1650,18 @@ adminApp.get('/profile', async (c) => {
             </form>
 
             {/* Email Setup / Verification Form */}
-            <form action="/admin/profile/update-email" method="post" class="space-y-4 border-t border-black pt-4">
+            <form action="/admin/profile/update-email" method="post" autocomplete="off" class="space-y-4 border-t border-black pt-4">
               <h3 class="text-sm font-black uppercase tracking-wider">Change / Setup Email</h3>
               
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Email</label>
-                <input type="email" id="profile-email-input" name="email" required autocomplete="off" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="email" id="profile-email-input" name="email" required autocomplete="email" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
                 <div class="flex gap-2">
-                  <input type="text" id="profile-code-input" name="code" required autocomplete="off" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
+                  <input type="text" id="profile-code-input" name="code" required autocomplete="one-time-code" placeholder="123456" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none text-center font-bold focus:ring-0 focus:border-zinc-500" />
                   <button type="button" onclick="sendProfileCode()" class="bg-black text-white px-3 py-2 text-xs font-bold uppercase hover:bg-zinc-800 rounded-none border border-black whitespace-nowrap">
                     Send Code
                   </button>
@@ -1666,7 +1674,7 @@ adminApp.get('/profile', async (c) => {
             </form>
 
             {/* Password Modification Form */}
-            <form action="/admin/profile/change-password" method="post" class="space-y-4 border-t border-black pt-4">
+            <form action="/admin/profile/change-password" method="post" autocomplete="off" class="space-y-4 border-t border-black pt-4">
               <h3 class="text-sm font-black uppercase tracking-wider">
                 {user?.password_hash ? 'Change Password' : 'Set Password'}
               </h3>
@@ -1674,7 +1682,7 @@ adminApp.get('/profile', async (c) => {
                 <div>
                   <label class="block text-xs font-bold uppercase mb-1">Current Password</label>
                   <div class="relative flex items-stretch">
-                    <input type="password" id="profile-current-password" name="current_password" required autocomplete="off" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                    <input type="password" id="profile-current-password" name="current_password" required autocomplete="current-password" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
                     <button type="button" onclick="const input = document.getElementById('profile-current-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
                       👁️
                     </button>
@@ -1684,7 +1692,7 @@ adminApp.get('/profile', async (c) => {
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">New Password (Min 8 characters)</label>
                 <div class="relative flex items-stretch">
-                  <input type="password" id="profile-new-password" name="new_password" required autocomplete="off" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
+                  <input type="password" id="profile-new-password" name="new_password" required autocomplete="new-password" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0" />
                   <button type="button" onclick="const input = document.getElementById('profile-new-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
                     👁️
                   </button>
