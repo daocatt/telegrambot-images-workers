@@ -245,7 +245,7 @@ adminApp.get('/login', async (c) => {
             </div>
           )}
           
-          <form action="/admin/login" method="post" class="space-y-4">
+          <form action="/admin/login" method="post" autocomplete="off" class="space-y-4">
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Email Address</label>
               <input type="email" name="email" required autocomplete="username" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
@@ -440,8 +440,8 @@ adminApp.get('/setup-credentials', async (c) => {
             if (codeContainer) codeContainer.style.display = 'none';
           }
           document.addEventListener('DOMContentLoaded', clearSetupInputs);
-          window.addEventListener('pageshow', (event) => {
-            if (event.persisted) clearSetupInputs();
+          window.addEventListener('pageshow', () => {
+            clearSetupInputs();
           });
 
           async function sendVerificationCode() {
@@ -466,7 +466,7 @@ adminApp.get('/setup-credentials', async (c) => {
             const password = document.getElementById('setup-password').value;
 
             if (password.length < 8) {
-              return alert('Password must be at least 8 characters long.');
+               return alert('Password must be at least 8 characters long.');
             }
 
             const res = await fetch('/admin/api/auth/verify-code', {
@@ -1592,8 +1592,8 @@ adminApp.get('/profile', async (c) => {
             if (newPwd) newPwd.value = '';
           }
           document.addEventListener('DOMContentLoaded', clearProfileInputs);
-          window.addEventListener('pageshow', (event) => {
-            if (event.persisted) clearProfileInputs();
+          window.addEventListener('pageshow', () => {
+            clearProfileInputs();
           });
 
           async function sendProfileCode() {
@@ -1606,22 +1606,22 @@ adminApp.get('/profile', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
-              alert('Verification code sent successfully! Check your email or Telegram Bot chat.');
+              alert('Verification code sent to your new email.');
             } else {
               alert('Error: ' + data.error);
             }
           }
         ` }} />
-        <div class="max-w-md bg-white border-2 border-black p-6 rounded-none">
-          <h2 class="text-xl font-black uppercase tracking-wider mb-2 border-b border-black pb-4">Personal Center</h2>
+        <div class="max-w-2xl mx-auto bg-white border-2 border-black p-6 sm:p-8 rounded-none">
+          <h2 class="text-xl font-black uppercase tracking-wider mb-6 border-b border-black pb-4">Personal Center</h2>
           
           {error && (
-            <div class="bg-gray-100 border-l-4 border-red-600 p-3 mb-4 text-xs font-bold text-red-600 rounded-none">
+            <div class="bg-gray-100 border-l-4 border-black p-3 mb-6 text-xs font-bold text-red-600 rounded-none">
               {escapeHtml(error)}
             </div>
           )}
           {success && (
-            <div class="bg-gray-100 border-l-4 border-green-600 p-3 mb-4 text-xs font-bold text-green-600 rounded-none">
+            <div class="bg-gray-100 border-l-4 border-black p-3 mb-6 text-xs font-bold text-green-600 rounded-none">
               {escapeHtml(success)}
             </div>
           )}
