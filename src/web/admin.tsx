@@ -208,7 +208,7 @@ adminApp.get('/login', async (c) => {
               </div>
             )}
             
-            <form action="/admin/login-ticket" method="post" class="space-y-4">
+            <form action="/admin/login-ticket" method="post" autocomplete="off" class="space-y-4">
               <input type="hidden" name="ticket" value={ticket} />
               <div>
                 <label class="block text-xs font-bold uppercase mb-1">Verification Code</label>
@@ -245,15 +245,15 @@ adminApp.get('/login', async (c) => {
             </div>
           )}
           
-          <form action="/admin/login" method="post" class="space-y-4">
+          <form action="/admin/login" method="post" autocomplete="off" class="space-y-4">
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Email Address</label>
-              <input type="email" name="email" required placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+              <input type="email" name="email" required autocomplete="off" placeholder="name@domain.com" class="w-full bg-white border border-black px-3 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
             </div>
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Password</label>
               <div class="relative flex items-stretch">
-                <input type="password" id="login-password" name="password" required placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
+                <input type="password" id="login-password" name="password" required autocomplete="off" placeholder="••••••••" class="w-full bg-white border border-black pl-3 pr-10 py-2 text-sm outline-none rounded-none focus:ring-0 focus:border-zinc-500" />
                 <button type="button" onclick="const input = document.getElementById('login-password'); input.type = input.type === 'password' ? 'text' : 'password';" class="absolute inset-y-0 right-0 px-3 flex items-center text-sm hover:bg-gray-100 border-l border-black cursor-pointer">
                   👁️
                 </button>
@@ -429,7 +429,7 @@ adminApp.get('/setup-credentials', async (c) => {
         <title>Setup Credentials - Admin Console</title>
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
         <script dangerouslySetInnerHTML={{ __html: `
-          document.addEventListener('DOMContentLoaded', () => {
+          window.addEventListener('pageshow', () => {
             const email = document.getElementById('email');
             const code = document.getElementById('code');
             const password = document.getElementById('setup-password');
@@ -462,7 +462,7 @@ adminApp.get('/setup-credentials', async (c) => {
             const password = document.getElementById('setup-password').value;
 
             if (password.length < 8) {
-              return alert('Password must be at least 8 characters long.');
+               return alert('Password must be at least 8 characters long.');
             }
 
             const res = await fetch('/admin/api/auth/verify-code', {
@@ -485,7 +485,7 @@ adminApp.get('/setup-credentials', async (c) => {
           <h2 class="text-xl font-black uppercase tracking-wider mb-2 text-center">Setup Credentials</h2>
           <p class="text-xs text-gray-500 mb-6 text-center">Link your Telegram account to an email and password for future direct web access.</p>
 
-          <div class="space-y-4">
+          <form autocomplete="off" onsubmit="return false;" class="space-y-4">
             <div>
               <label class="block text-xs font-bold uppercase mb-1">Email Address</label>
               <div class="flex gap-2">
@@ -514,7 +514,7 @@ adminApp.get('/setup-credentials', async (c) => {
                 Verify & Save Credentials
               </button>
             </div>
-          </div>
+          </form>
         </div>
       </body>
     </html>
@@ -1575,7 +1575,7 @@ adminApp.get('/profile', async (c) => {
       {html`<!DOCTYPE html>`}
       <Layout title="Personal Center" isAdmin={user?.is_admin} isSuperAdmin={isSuperAdmin} showGallery={String(c.env.ENABLE_GALLERY) === 'true'}>
         <script dangerouslySetInnerHTML={{ __html: `
-          document.addEventListener('DOMContentLoaded', () => {
+          window.addEventListener('pageshow', () => {
             const email = document.getElementById('profile-email-input');
             const code = document.getElementById('profile-code-input');
             const nickname = document.getElementById('profile-nickname-input');
@@ -1598,22 +1598,22 @@ adminApp.get('/profile', async (c) => {
             });
             const data = await res.json();
             if (data.success) {
-              alert('Verification code sent successfully! Check your email or Telegram Bot chat.');
+              alert('Verification code sent to your new email.');
             } else {
               alert('Error: ' + data.error);
             }
           }
         ` }} />
-        <div class="max-w-md bg-white border-2 border-black p-6 rounded-none">
-          <h2 class="text-xl font-black uppercase tracking-wider mb-2 border-b border-black pb-4">Personal Center</h2>
+        <div class="max-w-2xl mx-auto bg-white border-2 border-black p-6 sm:p-8 rounded-none">
+          <h2 class="text-xl font-black uppercase tracking-wider mb-6 border-b border-black pb-4">Personal Center</h2>
           
           {error && (
-            <div class="bg-gray-100 border-l-4 border-red-600 p-3 mb-4 text-xs font-bold text-red-600 rounded-none">
+            <div class="bg-gray-100 border-l-4 border-black p-3 mb-6 text-xs font-bold text-red-600 rounded-none">
               {escapeHtml(error)}
             </div>
           )}
           {success && (
-            <div class="bg-gray-100 border-l-4 border-green-600 p-3 mb-4 text-xs font-bold text-green-600 rounded-none">
+            <div class="bg-gray-100 border-l-4 border-black p-3 mb-6 text-xs font-bold text-green-600 rounded-none">
               {escapeHtml(success)}
             </div>
           )}
@@ -1627,7 +1627,7 @@ adminApp.get('/profile', async (c) => {
             </div>
 
             {/* Nickname Modification Form */}
-            <form action="/admin/profile/change-nickname" method="post" class="space-y-4 border-t border-black pt-4">
+            <form action="/admin/profile/change-nickname" method="post" autocomplete="off" class="space-y-4 border-t border-black pt-4">
               <h3 class="text-sm font-black uppercase tracking-wider">Change Nickname</h3>
               <p class="text-xs text-gray-600">Min 4 characters, no special symbols.</p>
               <div>
@@ -1642,7 +1642,7 @@ adminApp.get('/profile', async (c) => {
             </form>
 
             {/* Email Setup / Verification Form */}
-            <form action="/admin/profile/update-email" method="post" class="space-y-4 border-t border-black pt-4">
+            <form action="/admin/profile/update-email" method="post" autocomplete="off" class="space-y-4 border-t border-black pt-4">
               <h3 class="text-sm font-black uppercase tracking-wider">Change / Setup Email</h3>
               
               <div>
@@ -1666,7 +1666,7 @@ adminApp.get('/profile', async (c) => {
             </form>
 
             {/* Password Modification Form */}
-            <form action="/admin/profile/change-password" method="post" class="space-y-4 border-t border-black pt-4">
+            <form action="/admin/profile/change-password" method="post" autocomplete="off" class="space-y-4 border-t border-black pt-4">
               <h3 class="text-sm font-black uppercase tracking-wider">
                 {user?.password_hash ? 'Change Password' : 'Set Password'}
               </h3>
