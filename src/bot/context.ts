@@ -15,6 +15,7 @@ export interface EnvBindings {
   ENABLE_GALLERY?: string; // "true" | "false"
   ENABLE_PUBLIC_CHECK?: string; // "true" | "false"
   SUPER_ADMIN_TG_ID?: string; // Super admin telegram ID
+  TELEGRAM_BOT_NAME?: string;
   RESEND_API_KEY?: string;
   SENDER_EMAIL?: string;
   SENDER_NAME?: string;
