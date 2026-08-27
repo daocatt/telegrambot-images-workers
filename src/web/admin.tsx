@@ -80,13 +80,13 @@ adminApp.use('*', async (c, next) => {
   }
 
   c.set('userId', session.user_id)
-  c.set('isAdmin', user.is_admin)
+  c.set('isAdmin', Boolean(user.is_admin))
 
   const superAdminTgId = c.env.SUPER_ADMIN_TG_ID ? String(c.env.SUPER_ADMIN_TG_ID).trim() : ''
   const isSuperAdmin = superAdminTgId
     ? String(user.tg_id).trim() === superAdminTgId
-    : user.is_admin
-  c.set('isSuperAdmin', isSuperAdmin)
+    : Boolean(user.is_admin)
+  c.set('isSuperAdmin', Boolean(isSuperAdmin))
 
   // Redirect to setup credentials if not completed
   if (!user.email || !user.password_hash) {
