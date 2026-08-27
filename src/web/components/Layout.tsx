@@ -40,14 +40,14 @@ export const Layout = (props: { title: string; isAdmin?: boolean; isSuperAdmin?:
         </style>
       </head>
       <body class="bg-gray-100 text-black min-h-screen font-mono">
-        <header class="bg-white border-b border-black sticky top-0 z-30">
+        <header class="bg-white border-b border-black sticky top-0 z-50">
           <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-2">
             <h1 class="text-lg md:text-xl font-black uppercase tracking-wider text-black">
               📷 SnapFlare
             </h1>
             <nav class="flex items-center space-x-3 md:space-x-4 overflow-x-auto no-scrollbar py-1">
               <a href="/admin" class="text-black hover:bg-black hover:text-white px-2 py-1 text-sm font-bold border border-transparent hover:border-black transition whitespace-nowrap">Images</a>
-              {props.isSuperAdmin && (
+              {Boolean(props.isSuperAdmin) && (
                 <a href="/admin/users" class="text-black hover:bg-black hover:text-white px-2 py-1 text-sm font-bold border border-transparent hover:border-black transition whitespace-nowrap">Users</a>
               )}
               {props.showGallery && (
