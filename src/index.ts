@@ -10,6 +10,33 @@ import { landingHtml } from './web/templates/landing'
 
 const app = new Hono<{ Bindings: EnvBindings }>()
 
+/**
+ * The webhook host exists only so Telegram can POST updates to it. Serving the
+ * whole app there would double the public surface for no benefit: cookies,
+ * CORS origins and rate limits are all keyed by host, so the second hostname is
+ * a second place to get them wrong.
+ *
+ * The host is read from WEBHOOK_URL rather than hard-coded, and when it is not
+ * configured (or unparseable) the gate stays open — a broken WEBHOOK_URL already
+ * breaks the bot, and taking the site down with it helps nobody.
+ */
+app.use('*', async (c, next) => {
+  if (!c.env.WEBHOOK_URL) return next()
+
+  let webhookHost: string
+  try {
+    webhookHost = new URL(c.env.WEBHOOK_URL).host
+  } catch {
+    console.warn('WEBHOOK_URL is not a valid URL; webhook host restriction disabled')
+    return next()
+  }
+
+  if (new URL(c.req.url).host !== webhookHost) return next()
+  if (c.req.method === 'POST' && c.req.path.startsWith('/webhook/')) return next()
+
+  return c.text('Not Found', 404)
+})
+
 // Global CORS support for diverse custom domains
 app.use('*', async (c, next) => {
   const corsMiddleware = cors({
