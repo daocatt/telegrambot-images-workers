@@ -1,13 +1,16 @@
 {
   "name": "telegrambot-images-workers",
+  "engines": {
+    "node": ">=24.22.1"
+  },
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify",
+    "deploy": "HOME=\"$HOME/.wrangler-a\" wrangler deploy --env pot --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "generate-secret": "node scripts/generate-secret.js",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply telegrambot_images_db --remote",
+    "db:migrate": "HOME=\"$HOME/.wrangler-a\" wrangler d1 migrations apply telegrambot_images_pot --remote --env pot",
     "db:migrate:local": "wrangler d1 migrations apply telegrambot_images_db --local",
     "lint": "tsc --noEmit"
   },
@@ -20,7 +23,7 @@
   "devDependencies": {
     "drizzle-kit": "^0.31.10",
     "typescript": "^5.9.3",
-    "wrangler": "^4.4.0"
+    "wrangler": "^4.151.3"
   },
   "overrides": {
     "esbuild": "^0.25.12"

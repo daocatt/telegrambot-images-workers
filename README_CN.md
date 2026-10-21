@@ -48,6 +48,21 @@ bash deploy-pot.sh
 https://your-domain.app/setWebhook?admin_secret=<你的WEBHOOK_SECRET>
 ```
 
+### 3. 工具链与部署账号
+
+- **Node 24.22.1+** — 由 `package.json` 的 `engines.node` 与 `.nvmrc` 固定。
+- **wrangler 4.151.3**、`compatibility_date` **2026-10-19**（wrangler 内置 workerd
+  `1.20261019.1` 能接受的最新日期）。改完 `wrangler.jsonc` 记得跑 `npm run cf-typegen`
+  重新生成 `worker-configuration.d.ts`。
+- **只有 `pot` 环境在线**：Worker 名 `telegrambot-images-pot`，域名 `imgbox.p6p.app`。
+  顶层（`snapflare`）那套已停用，`deploy-snapflare.sh` 是留档，不要执行。
+- **部署必须用 `~/.wrangler-a` 凭据**（该 Worker 属于 `uulele@gmail.com` 账号）。
+  `npm run deploy`、`npm run db:migrate` 与 `deploy-pot.sh` 都已内联 `HOME`；
+  裸 `wrangler deploy` 会用默认 `~/.wrangler` 里的另一个账号，报
+  `Authentication error [code: 10000]`。
+- `*.sudaxyz.workers.dev` 挂了 Cloudflare Access，直接访问会被 302 到登录页；
+  线上验证请用 `https://imgbox.p6p.app`。
+
 ---
 
 ## 🤖 机器人内置指令
