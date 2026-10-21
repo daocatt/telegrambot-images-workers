@@ -62,6 +62,10 @@ https://your-domain.app/setWebhook?admin_secret=<你的WEBHOOK_SECRET>
   `Authentication error [code: 10000]`。
 - `*.sudaxyz.workers.dev` 挂了 Cloudflare Access，直接访问会被 302 到登录页；
   线上验证请用 `https://imgbox.p6p.app`。
+- **webhook 主机只开一个口子**：`WEBHOOK_URL` 的域名只放行 `POST /webhook/*`，
+  其余路径一律 404。这样 `imgboxapi.p6p.app` 不会成为第二个可访问的前台
+  （cookie、CORS、限流都是按 host 记的，多一个域名就多一处要维护）。
+  `/setWebhook` 也要在站点域名下调用，不要在 webhook 域名上调。
 
 ---
 
